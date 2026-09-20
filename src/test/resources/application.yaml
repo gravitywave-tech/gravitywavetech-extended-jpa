@@ -1,0 +1,26 @@
+# 测试专用数据源配置。
+#
+# 注意：Spring Boot 对 classpath:/application.yaml 只加载「首个命中」的资源，
+# 测试期 target/test-classes 优先于 target/classes，因此本文件会「替换」
+# src/main/resources/application.yaml（而不是与之合并）。
+#
+# 目的：让 JPA 仓储接线可以在不依赖 192.168.0.113 上的 MySQL、也不依赖
+# 尚未引入的 druid 连接池的前提下完成验证。
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    # NON_KEYWORDS：放行 ps_lawcase 中 year / month 等 H2 保留字列名
+    url: jdbc:h2:mem:framework;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;NON_KEYWORDS=YEAR,MONTH,DAY,HOUR,MINUTE,SECOND,VALUE,KEY
+    username: sa
+    password: ''
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+  # 避免 spring-boot-docker-compose 在测试期尝试拉起 compose.yaml
+  docker:
+    compose:
+      enabled: false

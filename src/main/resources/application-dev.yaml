@@ -1,0 +1,27 @@
+# dev profile 专用配置（覆盖 src/main/resources/application.yaml 中的同名属性）
+#
+# 触发条件：main 配置 hardcode 了 spring.profiles.active=dev，因此 mvnw spring-boot:run
+# 与 java -jar 默认都会激活本文件。
+#
+# 目的：让本地启动可以工作 —— 既不必依赖 192.168.0.113 上的真实 MySQL，也避开
+# 尚未引入的 druid-spring-boot-3-starter（H2 由 pom 的 runtime 依赖提供）。
+#
+# 与生产配置的关系：本文件只覆盖「数据源」与「schema 初始化」两项；
+# logback、redis、swagger、server.port 等保持 main 配置不变。
+spring:
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+    # NON_KEYWORDS：放行 ps_lawcase 中 year / month 等 H2 保留字列名
+    url: jdbc:p6spy:h2:mem:framework;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;NON_KEYWORDS=YEAR,MONTH,DAY,HOUR,MINUTE,SECOND,VALUE,KEY
+    username: sa
+    password: ''
+  jpa:
+    # 兜底：让 Hibernate 自己直接打印 SQL，与 p6spy 无关；只要 Hibernate 真的发出 SQL 就一定能在控制台看见
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+  # 项目根下有 compose.yaml，避免 spring-boot:run 期间 docker compose up 失败
+  docker:
+    compose:
+      enabled: false

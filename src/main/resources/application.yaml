@@ -1,0 +1,14 @@
+server:
+  port: 8012
+  servlet:
+    context-path: /
+spring:
+  application:
+    name: framework
+  profiles:
+    active: dev
+logging:
+  file:
+    path: ./logs
+  config: classpath:logback-spring-${spring.profiles.active}.xml
+# application.yml

@@ -1,0 +1,37 @@
+ark-global:
+  baseUploadUrl: http://192.168.0.113:8080/clueBasicForm/basicUpload.do
+  baseUploadImportUrl: http://192.168.0.113:8080/clueBasicForm/basicUploadImport.do
+  loginUrl: http://192.168.0.113:8080/rest/user/login.do
+  # ============================================
+  # 配置加密说明
+  # ============================================
+  # 密钥管理方式（按优先级）：
+  # 1. JVM参数: -Dconfig.encrypt.key=your-key
+  # 2. 环境变量: CONFIG_ENCRYPT_KEY=your-key
+  # 3. 默认密钥（仅开发环境）
+  #
+  # 使用方式：
+  # 1. 运行 KeyManager.main() 生成密钥和加密值
+  # 2. 将密钥配置到环境变量或JVM参数
+  # 3. 将加密值用 ENC() 包裹后配置到下方
+  #
+  # 明文配置（开发环境）：
+  loginId: ENC(UtJoiXp9wMH1ITIUoN+0tpESRZZ+cCzfDbFTJW83gpPMB9uc3FLbRQ==)
+  loginPwd: ENC(QvKVN92KAdyNM2burhsYwcJynWTgnvhsdky5aJoJ+LVInw==)
+  # 加密配置（生产环境推荐）：
+  # loginId: ENC(加密后的值)
+  # loginPwd: ENC(加密后的值)
+  failRetryTimes: 3
+  xform: ark
+  # Token 缓存过期时间（分钟），默认 50 分钟（小于缓存的 60 分钟，确保 token 在失效前刷新）
+  tokenExpireMinutes: 50
+
+base-data:
+  importSourceFileDir: D:\\Data\\Ark\\Import
+  importSourceFileBackupDir: D:\\Data\\Ark\\Backup
+  maxImportRetries: 3
+  uploadTimeoutMs: 1800000  # 上传超时时间（毫秒），默认30分钟
+task:
+  schedule:
+    base-data-import: 0 0/15 20-23,0-18 * * ?
+    base-data-import-file-2db: 0 0 20 * * ?

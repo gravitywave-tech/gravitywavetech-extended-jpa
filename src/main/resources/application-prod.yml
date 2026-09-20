@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: framework
+    # 激活 dev 环境配置
+    # 通用数据源类型
+    datasource:
+      type: com.alibaba.druid.pool.DruidDataSource
+      druid:
+        #      driver-class-name: com.mysql.cj.jdbc.Driver
+        #      url: jdbc:mysql://127.0.0.1:3306/jw-v1?useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&useSSL=true&autoReconnect=true&connecTimeout=10000&socketTimeout=10000
+        #      username: root
+        #      password: 123456
+        driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+        url: jdbc:p6spy:mysql://192.168.0.113:3306/jw-v1?useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&useSSL=true&autoReconnect=true&connecTimeout=10000&socketTimeout=10000
+        username: root
+        password: root
+        # 监控统计拦截的filters
+        filters: stat
+        # 连接池配置（默认值，各环境可覆盖）
+        pool-prepared-statements: false
+        max-pool-prepared-statement-per-connection-size: 20
+        test-while-idle: true
+        test-on-borrow: false
+        test-on-return: false
+        validation-query: select 1
+        validation-query-timeout: 5
+        time-between-eviction-runs-millis: 60000
+        min-evictable-idle-time-millis: 300000
+    # 通用 JPA 配置
+    jpa:
+      generate-ddl: true
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.MySQL57Dialect
+          id:
+            new_generator_mappings: false
+      open-in-view: false
+logging:
+  config: classpath:logback-spring-${spring.profiles.active}.xml
+# application.yml
