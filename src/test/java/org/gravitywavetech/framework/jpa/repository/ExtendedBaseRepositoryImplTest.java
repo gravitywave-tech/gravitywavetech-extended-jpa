@@ -39,7 +39,9 @@ import static org.mockito.Mockito.when;
  *   <li><b>泛型保留</b>：返回值是带实体类型的 {@code NativeQueryBuilder<T> / HqlQueryBuilder<T> /
  *       Page<T>}，无需强转；</li>
  *   <li><b>COUNT 统一</b>：分页 COUNT 与构建器共用 {@link SqlCountSupport}；</li>
- *   <li><b>CRUD 分离</b>：{@code save()} 的审计填充仍在基类链路（{@link BaseRepositoryImpl}）中生效。</li>
+ *   <li><b>CRUD 分离</b>：{@code save()} 只负责 ID 生成与 persist/merge 分发；
+ *       审计字段由 Spring Data Auditing 在 {@code persist / merge} 前通过
+ *       {@code AuditingEntityListener} 自动填充，本单元测试无 Spring 上下文故不覆盖该部分。</li>
  * </ol>
  */
 @ExtendWith(MockitoExtension.class)
@@ -177,19 +179,19 @@ public class ExtendedBaseRepositoryImplTest {
         verify(typedQuery).setMaxResults(10);
     }
 
-    // ==================== CRUD 链路仍可用（审计填充在 BaseRepositoryImpl） ====================
+    // ==================== CRUD 链路：save() 只做 ID 生成与 persist/merge 分发 ====================
 
-    /** save() 应填充审计字段，并按 isNew 走 persist */
+    /** isNew=true 时应走 persist；审计字段由 Spring Data Auditing 在持久化前填充，本测试不覆盖 */
     @Test
-    public void save_fillsAuditFieldsAndPersists() {
+    public void save_persistsNewEntity() {
         PsLawcase lawcase = new PsLawcase();
         when(lawcaseEntityInformation.isNew(lawcase)).thenReturn(true);
 
         PsLawcase saved = lawcaseRepository.save(lawcase);
 
         assertSame(lawcase, saved);
-        assertNotNull(lawcase.getCreateTime(), "createTime 应由基类填充");
-        assertNotNull(lawcase.getUpdateTime(), "updateTime 应由基类填充");
+        assertNotNull(lawcase.getId(), "PsLawcase 构造时应已生成主键");
         verify(entityManager).persist(lawcase);
+        verify(entityManager, org.mockito.Mockito.never()).merge(lawcase);
     }
 }

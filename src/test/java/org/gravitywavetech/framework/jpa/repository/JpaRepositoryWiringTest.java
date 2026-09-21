@@ -1,5 +1,6 @@
 package org.gravitywavetech.framework.jpa.repository;
 
+import org.gravitywavetech.framework.jpa.entity.DfApiDictItem;
 import org.gravitywavetech.framework.jpa.entity.PsLawcase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ClassUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -38,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JpaRepositoryWiringTest {
 
     @Autowired
-    private PsLawcaseRepository repository;
+    private DfApiDictItemRepository repository;
 
     @Test
     @DisplayName("接线生效：仓储基类为 ExtendedBaseRepositoryImpl 而非 SimpleJpaRepository")
@@ -61,13 +63,21 @@ class JpaRepositoryWiringTest {
     @Test
     @DisplayName("Native SQL 端到端可用")
     void nativeSqlRunsEndToEnd() {
-        PsLawcase entity = new PsLawcase();
-        entity.setCaseno("WIRING-001");
-        entity.setTitle("接线验证");
+        DfApiDictItem entity = new DfApiDictItem();
+        entity.setDictLabel("信访举报");
+        entity.setDictTypeCode("xsly");
+        entity.setDictValue("010");
+        entity.setParentDictValue("100");
+        entity.setCreateTime(LocalDateTime.now());
+        entity.setUpdateTime(LocalDateTime.now());
+        entity.setDeleteStatus("N");
+        entity.setCreatorId("tomcat");
+        entity.setUpdatorId("tocmat");
+        entity.setGroupDictValue("xsly");
         repository.saveAndFlush(entity);
 
         List<Map<String, Object>> rows =
-                repository.findByNativeSqlForMap("select count(*) as total_count from ps_lawcase");
+                repository.findByNativeSqlForMap("select count(*) as total_count from df_api_dict_item");
 
         assertThat(rows).hasSize(1);
 

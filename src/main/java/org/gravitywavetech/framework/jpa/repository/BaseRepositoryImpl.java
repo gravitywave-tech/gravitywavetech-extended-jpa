@@ -14,17 +14,18 @@ import org.springframework.util.StringUtils;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.time.LocalDateTime;
 
 /**
  * 通用仓储基类 —— 只负责 CRUD 相关的横切能力。
  *
  * <p>职责边界（与查询能力彻底分离）：</p>
  * <ul>
- *     <li>审计字段填充（creatorId / createTime / updatorId / updateTime）</li>
  *     <li>无 {@code @GeneratedValue} 时的 String 主键 UUID 生成</li>
  *     <li>绕过父类 ID 强转问题的 persist / merge 分发</li>
  * </ul>
+ *
+ * <p>审计字段（creatorId / createTime / updatorId / updateTime）由 Spring Data Auditing
+ * 通过 {@code AuditingEntityListener} 在 {@code persist / merge} 前自动填充，本类不再重复处理。</p>
  *
  * <p>Native SQL / HQL / Criteria 查询能力由
  * {@link NativeQueryFragment} / {@link HqlQueryFragment} / {@link CriteriaQueryFragment} 提供，
@@ -67,29 +68,17 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
     }
 
     /**
-     * 重写 save：填充审计字段、按需生成主键，并直接走 JPA 的 persist / merge
+     * 重写 save：按需生成主键，并直接走 JPA 的 persist / merge。
+     *
+     * <p>审计字段（creatorId / createTime / updatorId / updateTime）交由 Spring Data Auditing
+     * 自动填充，本方法不再重复处理。</p>
      */
     @Override
     @Transactional
     @SuppressWarnings({"unchecked", "rawtypes"})
     public <S extends T> S save(S entity) {
-        // ========== BaseEntity<ID>（泛型，支持 String/Long/Integer 等） ==========
-        if (entity instanceof BaseEntity) {
-            BaseEntity<?> baseEntity = (BaseEntity<?>) entity;
-            String operatorId = "";
-            LocalDateTime occrOn = LocalDateTime.now();
-
-            // 1. 审计字段
-            if (isEmpty(baseEntity.getCreatorId())) {
-                baseEntity.setCreatorId(operatorId);
-                baseEntity.setCreateTime(occrOn);
-            }
-            if (isEmpty(baseEntity.getUpdatorId())) {
-                baseEntity.setUpdatorId(operatorId);
-            }
-            baseEntity.setUpdateTime(occrOn);
-
-            // 2. ID 处理：仅当 ID 为空且没有 @GeneratedValue 时才干预
+        // ID 处理：仅当 ID 为空且没有 @GeneratedValue 时才干预
+        if (entity instanceof BaseEntity<?> baseEntity) {
             Object currentId = baseEntity.getId();
             boolean idIsEmpty = (currentId == null)
                     || (currentId instanceof String && !StringUtils.hasLength((String) currentId));
@@ -112,7 +101,7 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
             }
         }
 
-        // 3. 直接走 JPA
+        // 直接走 JPA
         if (this.entityInformation.isNew(entity)) {
             entityManager.persist(entity);
             return entity;
@@ -122,16 +111,6 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
     }
 
     /* ==================== 辅助方法 ==================== */
-
-    private boolean isEmpty(Object obj) {
-        if (obj == null) {
-            return true;
-        }
-        if (obj instanceof String) {
-            return !StringUtils.hasLength((String) obj);
-        }
-        return false;
-    }
 
     /**
      * 反射检查实体主键字段是否标注了 @GeneratedValue

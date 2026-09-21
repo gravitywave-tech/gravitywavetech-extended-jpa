@@ -79,4 +79,22 @@ public class DfApiDictItemRepositoryTest {
             this.dfApiDictItemRepository.save(newItem);
         }
     }
+
+    @Test
+    public void saveNew(){
+        DfApiDictItem newItem = new DfApiDictItem();
+        newItem.setDictLabel("信访举报");
+        newItem.setDictTypeCode("xsly");
+        newItem.setDictValue("010");
+        newItem.setParentDictValue("100");
+        newItem.setCreateTime(LocalDateTime.now());
+        newItem.setUpdateTime(LocalDateTime.now());
+        newItem.setDeleteStatus("N");
+        newItem.setCreatorId("tomcat");
+        newItem.setUpdatorId("tocmat");
+        newItem.setGroupDictValue("xsly");
+        this.dfApiDictItemRepository.save(newItem);
+        System.err.println("-------newItem-id:");
+        System.err.println(newItem.getId());
+    }
 }
