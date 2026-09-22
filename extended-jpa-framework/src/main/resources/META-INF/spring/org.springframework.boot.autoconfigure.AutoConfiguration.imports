@@ -1,0 +1,2 @@
+org.gravitywavetech.extended.jpa.autoconfigure.ExtendedJpaAutoConfiguration
+org.gravitywavetech.extended.jpa.autoconfigure.ExtendedJpaAuditingAutoConfiguration

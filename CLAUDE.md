@@ -4,32 +4,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-一个 Spring Boot 4 / Spring Data JPA 扩展框架，目标是给业务仓储提供统一的
+一个 Spring Boot 4 / Spring Data JPA 扩展框架，以 **Spring Boot Starter** 形式提供统一的
 「审计字段填充 + String 主键 UUID 生成 + 三类动态查询（Native SQL / HQL / Criteria）」能力。
-仓库本身既是可运行的示例应用（`FrameworkApplication`），也是未来拆分 `spring-boot-starter` 的骨架。
 
-Java 版本要求 **25**（`pom.xml` 中 `<java.version>25</java.version>`）。修改 `pom.xml` 前先确认本地 JDK 满足该版本。
+仓库为多模块 Maven 项目：
+
+| 模块 | 说明 |
+| --- | --- |
+| `extended-jpa-framework` | Starter 库（自动配置 + 仓储扩展 + 查询构建器） |
+| `extended-jpa-framework-demo` | 示例应用（验证 Starter 接线） |
+
+Java 版本要求 **25**（父 `pom.xml` 中 `<java.version>25</java.version>`）。修改 `pom.xml` 前先确认本地 JDK 满足该版本。
 
 ## 常用命令
 
 ```bash
-./mvnw spring-boot:run          # 启动应用（默认 dev profile，走 H2 内存库）
+./mvnw spring-boot:run          # 启动 demo 应用（默认 dev profile，走 H2 内存库）
 ./mvnw test                     # 跑全部测试
 ./mvnw test -Dtest=类名#方法名   # 跑单个测试方法
 ./mvnw -DskipTests package      # 打包
 ```
 
-Windows 下用 `mvnw.cmd`。测试使用 `src/test/resources/application.yaml` 覆盖的数据源（纯 H2），不需要外部 MySQL。
+Windows 下用 `mvnw.cmd`。demo 测试使用 `extended-jpa-framework-demo/src/test/resources/application.yaml` 覆盖的数据源（纯 H2），不需要外部 MySQL。
+
+首次运行前需先安装父 POM 和 framework 模块：
+
+```bash
+./mvnw install -N          # 安装父 POM
+./mvnw -pl extended-jpa-framework install -DskipTests   # 安装 framework 模块
+```
 
 ## 架构总览
 
-框架的核心只有一处接线入口：`src/main/java/org/gravitywavetech/framework/config/JpaRepositoryConfig.java`，
-它通过 `@EnableJpaRepositories` 同时挂上两个扩展点：
+框架通过 **自动配置** 接入 Spring Boot 应用，入口在 `extended-jpa-framework/src/main/java/org/gravitywavetech/extended/jpa/autoconfigure/ExtendedJpaAutoConfiguration.java`。
 
-- `repositoryBaseClass = ExtendedBaseRepositoryImpl` — 让继承 `ExtendedBaseRepository` 的仓储获得全套查询能力
-- `repositoryFactoryBeanClass = ExtendedJpaRepositoryFactoryBean` — 让「不继承基类」的普通 `JpaRepository` 也能按需注入查询片段
+```
+autoconfigure/
+├── ExtendedJpaAutoConfiguration.java       @AutoConfiguration 入口，@Import Registrar
+├── ExtendedJpaAuditingAutoConfiguration.java @EnableJpaAuditing + 默认 AuditorAware
+└── ExtendedJpaRepositoriesRegistrar.java    基于 AbstractRepositoryConfigurationSourceSupport，
+                                            通过 AutoConfigurationPackages 扫描仓储
 
-`JpaRepositoriesAutoConfiguration` 带有 `@ConditionalOnMissingBean(JpaRepositoryFactoryBean.class)`，本配置注册的是其子类，因此自动配置会自动让路。
+resources/META-INF/spring/
+└── org.springframework.boot.autoconfigure.AutoConfiguration.imports
+```
+
+`ExtendedJpaRepositoriesRegistrar` 继承 Spring Boot 的 `AbstractRepositoryConfigurationSourceSupport`，
+使用 `AutoConfigurationPackages` 解析仓储扫描路径（而非使用方声明类自身的包），
+这是 `@AutoConfiguration` 类上直接使用 `@EnableJpaRepositories` 无法做到的。
 
 ### 三层结构
 
@@ -73,6 +95,7 @@ Windows 下用 `mvnw.cmd`。测试使用 `src/test/resources/application.yaml` �
    - Native SQL：统一 `SELECT COUNT(*) FROM (原SQL) t`，不做字符串解析，GROUP BY / DISTINCT / JOIN / 子查询均成立。
    - HQL：剥离 `SELECT` 和 `ORDER BY` 后重拼；含 GROUP BY / UNION / 子查询时抛 `IllegalStateException`，要求调用方通过 `countHql("SELECT COUNT(*) ...")` 显式设置。
 6. 分页统一走 `setFirstResult/setMaxResults`，让 Hibernate 处理方言差异，不要在 SQL 里手写 `LIMIT`。
+7. **`@EnableJpaRepositories` 不能直接放在 `@AutoConfiguration` 类上** —— Spring Data 4.1.x 的 `AnnotationRepositoryConfigurationSource.getBasePackages()` 在没有显式 `basePackages` 时只返回声明类自身的包，不会查 `AutoConfigurationPackages`。必须通过 `@Import` 注册自定义 `AbstractRepositoryConfigurationSourceSupport` 子类（见 `ExtendedJpaRepositoriesRegistrar`）。
 
 ## 扩展指引
 
@@ -81,16 +104,16 @@ Windows 下用 `mvnw.cmd`。测试使用 `src/test/resources/application.yaml` �
 | 新增一种查询语言（QueryDSL / 存储过程等） | 加一个 `XxxQueryFragment<T>` 接口 + `XxxQueryFragmentImpl<T>` 实现，再在 `ExtendedJpaRepositoryFactory` 里 `.append(xxxFragment(domainType))` 一行 |
 | 调整 `save()` / 审计字段 / 主键生成策略 | 只改 `BaseRepositoryImpl` |
 | 调整 COUNT 生成规则 | 只改 `SqlCountSupport` |
-| 调整仓储接线（包路径、基类、工厂类） | 只改 `JpaRepositoryConfig` |
+| 调整仓储接线（包路径、基类、工厂类） | 改 `ExtendedJpaAutoConfiguration` / `ExtendedJpaRepositoriesRegistrar` |
 
 ## 运行时配置
 
-- **默认 dev profile**：`application.yaml` 硬编码 `spring.profiles.active=dev`。dev 数据源为 `jdbc:p6spy:h2:mem:...`（通过 p6spy 打印 SQL），`ddl-auto: create-drop`。启动时不需要 MySQL。
+- **默认 dev profile**：demo 模块 `application.yaml` 硬编码 `spring.profiles.active=dev`。dev 数据源为 `jdbc:p6spy:h2:mem:...`（通过 p6spy 打印 SQL），`ddl-auto: create-drop`。启动时不需要 MySQL。
 - **测试 profile**：`src/test/resources/application.yaml` 用纯 H2（不走 p6spy）。注意 Spring Boot 对 `classpath:/application.yaml` 只加载首个命中，测试期 `target/test-classes` 优先于 `target/classes`，因此测试配置文件会**替换**主配置而不是合并。
 - **sit/prod profile**：走 `192.168.0.113:3306/jw-v1` 的 MySQL + Druid + p6spy。`druid-spring-boot-3-starter` 依赖尚未引入，`application-sit.yaml` 中 `type: com.alibaba.druid.pool.DruidDataSource` 目前无法真正生效，本地开发不用碰这套配置。
 - **H2 关键词白名单**：`ps_lawcase` 表用到了 `year / month / day / hour / minute / second / value / key` 等 H2 保留字作列名，dev/test 数据源 URL 都通过 `NON_KEYWORDS=YEAR,MONTH,...` 放行。加新表若列名碰到 H2 保留字，需要在两个 URL 里都补上。
 
 ## 参考
 
-- 框架设计原文：`src/main/java/org/gravitywavetech/framework/jpa/repository/README.md`
-- 接线验证测试：`src/test/java/org/gravitywavetech/framework/jpa/repository/JpaRepositoryWiringTest.java`（如何从 AOP 代理背后取到真实实现类）
+- 框架设计原文：`extended-jpa-framework/src/main/java/org/gravitywavetech/extended/jpa/repository/README.md`
+- 接线验证测试：`extended-jpa-framework-demo/src/test/java/org/gravitywavetech/extended/jpa/demo/repository/JpaRepositoryWiringTest.java`（如何从 AOP 代理背后取到真实实现类）
