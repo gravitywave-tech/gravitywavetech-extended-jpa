@@ -108,8 +108,25 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
 
             if (idIsEmpty) {
                 IdGenerationStrategy strategy = lookupIdStrategy(entity.getClass());
-                if (!strategy.hasGeneratedValue && strategy.idType == String.class) {
+                if (strategy.hasGeneratedValue) {
+                    // 交给 JPA 自动生成，不填充也不报错
+                } else if (strategy.idType == String.class) {
                     ((BaseEntity) baseEntity).setId(UuidUtil.base58Uuid());
+                } else {
+                    throw new IllegalArgumentException(
+                            "主键为空且实体不是 Base58 String 主键，也缺少 @GeneratedValue，" +
+                                    "无法自动生成 ID: entity=" + entity.getClass().getName()
+                                    + ", idType=" + strategy.idType);
+                }
+            }
+        } else {
+            // 非 BaseEntity 的实体：仅在非 @GeneratedValue 且主键为空时快速失败，避免 persist 时抛出难懂的 JPA 异常。
+            Object currentId = this.entityInformation.getId(entity);
+            if (currentId == null) {
+                IdGenerationStrategy strategy = lookupIdStrategy(entity.getClass());
+                if (!strategy.hasGeneratedValue) {
+                    throw new IllegalArgumentException(
+                            "实体未继承 BaseEntity，且主键为空、缺少 @GeneratedValue：entity=" + entity.getClass().getName());
                 }
             }
         }
@@ -127,32 +144,29 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
      * <p>父类 {@link SimpleJpaRepository#saveAll(Iterable)} 逐条调用 {@code save} 并 flush，
      * 对大数据量导入很慢。本实现按 {@link #BATCH_SIZE} 一批 flush + clear：
      * <ol>
-     *     <li>先对每个实体补主键（复用 {@link #save(S)} 的策略）；</li>
-     *     <li>批量 {@code persist}，让 Hibernate 把 INSERT 语句攒到 JDBC 连接级 batching；</li>
+     *     <li>逐条调用 {@link #save(S)}：先做主键补齐，再根据 {@code isNew()} 分派 {@code persist/merge}
+     *         —— 与单条 {@code save} 行为完全一致，因此允许混合传入新实体与已加载实体；</li>
      *     <li>每 {@code BATCH_SIZE} 个执行一次 {@code flush + clear}，既触发一批 DML 提交，
-     *     又控制一级缓存规模；</li>
-     *     <li>末尾 {@code flush}，把残留实体落库；</li>
+     *         又控制一级缓存规模；</li>
+     *     <li>末尾 {@code flush}，把残留实体落库。</li>
      * </ol>
      *
      * <p>JDBC 层的 batching 由数据源配置决定（Druid / HikariCP 的 {@code jdbcBatchSize}）。
      * 若未开启，本方法退化为"分批 flush"，仍显著优于逐条保存。</p>
-     *
-     * <p>事务由外层提供（父类 {@code saveAll} 上有 {@code @Transactional}），本方法不做事务管理。</p>
      */
     @Override
+    @Transactional
     public <S extends T> List<S> saveAll(Iterable<S> entities) {
         List<S> toSave = new ArrayList<>();
         for (S entity : entities) {
             if (entity == null) {
                 throw new IllegalArgumentException("entity must not be null");
             }
-            ensureId(entity);
-            toSave.add(entity);
+            toSave.add(save(entity));
         }
 
         int count = 0;
         for (S entity : toSave) {
-            entityManager.persist(entity);
             if (++count % BATCH_SIZE == 0) {
                 entityManager.flush();
                 entityManager.clear();

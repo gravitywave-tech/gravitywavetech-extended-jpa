@@ -424,22 +424,49 @@ public class NativeQueryBuilder<T> {
     }
 
     /**
-     * 添加自定义条件
+     * 添加自定义条件，按顺序把 condition 中的 {@code ?} 占位符替换为位置参数并追加对应值。
+     * <p>占位符数量必须与 {@code values.length} 一致；不等则抛 {@link IllegalArgumentException}，
+     * 避免参数错配导致的静默错误。</p>
      */
     public NativeQueryBuilder<T> appendCondition(String condition, Object... values) {
         if (StringUtils.hasText(condition)) {
-            where();
-            String processedCondition = condition;
-            for (Object value : values) {
-                int index = processedCondition.indexOf("?");
-                if (index != -1) {
-                    processedCondition = processedCondition.replaceFirst("\\?", "?" + (params.size() + 1));
-                    params.add(value);
-                }
+            int placeholderCount = countPlaceholders(condition);
+            if (values == null) {
+                values = new Object[0];
             }
-            sql.append(processedCondition).append(" ");
+            if (placeholderCount != values.length) {
+                throw new IllegalArgumentException(
+                        "appendCondition: expected " + placeholderCount
+                                + " value(s) to match placeholder(s) in condition, got " + values.length
+                                + " — condition=" + condition);
+            }
+            where();
+            StringBuilder processed = new StringBuilder();
+            int cursor = 0;
+            for (Object value : values) {
+                int idx = condition.indexOf('?', cursor);
+                if (idx < 0) {
+                    break;
+                }
+                processed.append(condition, cursor, idx);
+                processed.append('?').append(params.size() + 1);
+                params.add(value);
+                cursor = idx + 1;
+            }
+            processed.append(condition, cursor, condition.length());
+            sql.append(processed).append(" ");
         }
         return this;
+    }
+
+    private static int countPlaceholders(String s) {
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == '?') {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**

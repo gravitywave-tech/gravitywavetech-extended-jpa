@@ -51,14 +51,22 @@ public final class SqlCountSupport {
         String trimmed = hql.trim();
         String upper = trimmed.toUpperCase();
 
-        // 顶层 SELECT 起始位置：可能是 "SELECT ... FROM ..."，也可能是 HQL 允许的省略形式 "FROM ..."
+        // HQL 允许省略 SELECT（形如 "FROM c WHERE ..."，等价于 "SELECT c FROM c WHERE ..."）。
+        // 这里分两种情形处理：有 SELECT 时定位其后第一个 FROM 作为剥离边界；无 SELECT 时
+        // 直接以首个顶层 FROM 作为起点。
         int selectIdx = findTopLevelKeyword(upper, "SELECT", 0);
         int fromIdx = findTopLevelKeyword(upper, "FROM", selectIdx >= 0 ? selectIdx + 6 : 0);
 
-        // 顶层非 SELECT 前缀的 FROM，或 FROM 之前又出现 SELECT（子查询），均视为复杂 HQL
-        if (fromIdx < 0 || selectIdx < 0) {
+        if (fromIdx < 0) {
             throw new IllegalStateException(
-                    "无法自动生成 COUNT 语句（缺少合法的 SELECT ... FROM 结构），" +
+                    "无法自动生成 COUNT 语句（HQL 缺少 FROM 子句），" +
+                            "请通过 countHql(\"SELECT COUNT(*) ...\") 显式设置。原始 HQL: " + hql);
+        }
+
+        // 若 selectIdx 存在但排在 fromIdx 之前又紧跟其他顶层关键字（比如 SELECT 后是 SELECT 子查询），视为复杂结构
+        if (selectIdx >= 0 && selectIdx > fromIdx) {
+            throw new IllegalStateException(
+                    "无法自动生成 COUNT 语句（SELECT 位置异常，可能存在子查询），" +
                             "请通过 countHql(\"SELECT COUNT(*) ...\") 显式设置。原始 HQL: " + hql);
         }
 

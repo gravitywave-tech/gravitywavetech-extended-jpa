@@ -11,7 +11,6 @@
 	<artifactId>extended-jpa-framework</artifactId>
 	<name>extended-jpa-framework</name>
 	<description>Spring Data JPA 扩展框架 starter（自动配置 + 三类动态查询 + 审计 + UUID 主键）</description>
-
 	<dependencies>
 		<!-- Spring Boot 自动配置：@AutoConfiguration / @ConditionalOnClass / @ConditionalOnProperty -->
 		<dependency>
@@ -36,14 +35,17 @@
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
 		</dependency>
-
+		<dependency>
+			<groupId>org.bitcoinj</groupId>
+			<artifactId>bitcoinj-core</artifactId>
+			<version>0.17.1</version>
+		</dependency>
 		<!-- Lombok（编译期） -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-
 		<!-- 测试 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

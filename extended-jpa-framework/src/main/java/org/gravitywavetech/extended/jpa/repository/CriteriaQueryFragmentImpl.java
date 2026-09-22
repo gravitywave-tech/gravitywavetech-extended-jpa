@@ -1,11 +1,9 @@
 package org.gravitywavetech.extended.jpa.repository;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
 
 /**
  * Criteria API 查询片段实现。
@@ -33,10 +31,6 @@ public class CriteriaQueryFragmentImpl<T> implements CriteriaQueryFragment<T> {
 
     @Override
     public Page<T> findByCriteria(CriteriaQueryBuilder<T> builder, Pageable pageable) {
-        long total = builder.count();
-        TypedQuery<T> query = builder.build();
-        query.setFirstResult(PageSupport.offsetToInt(pageable.getOffset()));
-        query.setMaxResults(pageable.getPageSize());
-        return new PageImpl<>(query.getResultList(), pageable, total);
+        return builder.page(pageable);
     }
 }

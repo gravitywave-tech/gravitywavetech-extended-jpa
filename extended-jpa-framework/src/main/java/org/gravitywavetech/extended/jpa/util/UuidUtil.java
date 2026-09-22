@@ -1,11 +1,16 @@
 package org.gravitywavetech.extended.jpa.util;
 
-import com.github.f4b6a3.uuid.util.*;
 import org.apache.commons.codec.binary.Base64;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
+/**
+ * UUID 生成与编码工具。
+ *
+ * <p>除标准 UUID 字符串外，提供两种紧凑编码形式：Base64URL（可读性略高、字符集小）
+ * 与 Base58（比特币风格、避开易混淆字符）。用于需要短主键或 URL 安全的场景。</p>
+ */
 public abstract class UuidUtil {
 
     private static final int UUID_BYTES = 16;
@@ -31,15 +36,15 @@ public abstract class UuidUtil {
     }
 
     public static String base58Uuid() {
-        return Base58.encode(uuidBytes());
+        return org.bitcoinj.base.Base58.encode(uuidBytes());
     }
 
     public static String encodeBase58Uuid(String uuidString) {
-        return Base58.encode(toBytes(UUID.fromString(uuidString)));
+        return org.bitcoinj.base.Base58.encode(toBytes(UUID.fromString(uuidString)));
     }
 
     public static String decodeBase58Uuid(String base58uuid) {
-        return fromBytes(Base58.decode(base58uuid)).toString();
+        return fromBytes(org.bitcoinj.base.Base58.decode(base58uuid)).toString();
     }
 
     private static byte[] toBytes(UUID uuid) {
@@ -59,17 +64,4 @@ public abstract class UuidUtil {
         return new UUID(bb.getLong(), bb.getLong());
     }
 
-    public static void main(String[] args){
-        // 1. 生成标准 UUID (等同你的 uuid())
-        UUID uuid = UUID.randomUUID();
-
-
-        // 2. Base64 编解码 (等同你的 base64Uuid(), encodeBase64Uuid(), decodeBase64Uuid())
-//        String base64Str = Base64Codec.(uuid);
-//        UUID decodedUuid1 = Base64Codec.decode(base64Str);
-//
-//        // 3. Base58 编解码 (等同你的 base58Uuid(), encodeBase58Uuid(), decodeBase58Uuid())
-//        String base58Str = Base58Codec.encode(uuid);
-//        UUID decodedUuid2 = Base58Codec.decode(base58Str);
-    }
 }

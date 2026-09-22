@@ -30,7 +30,6 @@ public class HqlQueryBuilder<T> {
     private final List<Object> params;
     private final Map<String, Object> namedParams;
     private String countHql;
-    private boolean isSelectNew = false;
     private boolean hasWhere = false;
     private String currentAlias = "t";
 
@@ -411,13 +410,14 @@ public class HqlQueryBuilder<T> {
     }
 
     /**
-     * 等于条件 = :name（命名参数）
+     * 等于条件 = :name（命名参数）。
+     * <p>与 {@link #eq} 一致：字段如已含别名前缀（如 {@code "c.name"}）则原样使用，
+     * 否则自动加上当前 {@link #from(String)} 设定的别名。</p>
      */
     public HqlQueryBuilder<T> eqWithName(String field, String paramName, Object value) {
         if (value != null) {
             where();
-            hql.append(currentAlias).append(".")
-                    .append(requireText(field, "eqWithName field"))
+            hql.append(prefixField(requireText(field, "eqWithName field")))
                     .append(" = :").append(requireText(paramName, "eqWithName paramName")).append(" ");
             namedParams.put(paramName, value);
         }
@@ -495,8 +495,10 @@ public class HqlQueryBuilder<T> {
      */
     public HqlQueryBuilder<T> like(String field, String value, NativeQueryBuilder.LikeMode mode) {
         if (StringUtils.hasText(value)) {
+            if (mode == null) {
+                throw new IllegalArgumentException("like mode must not be null");
+            }
             requireText(field, "like field");
-            if (mode == null) throw new IllegalArgumentException("like mode must not be null");
             where();
             hql.append(prefixField(field)).append(" LIKE ?").append(params.size() + 1).append(" ");
             params.add(mode.format(value));
@@ -585,26 +587,55 @@ public class HqlQueryBuilder<T> {
     }
 
     /**
-     * 添加自定义条件
+     * 添加自定义条件，按顺序把 condition 中的 {@code ?} 占位符替换为位置参数并追加对应值。
+     * <p>占位符数量必须与 {@code values.length} 一致；不等则抛 {@link IllegalArgumentException}，
+     * 避免参数错配导致的静默错误。</p>
      */
     public HqlQueryBuilder<T> appendCondition(String condition, Object... values) {
         if (StringUtils.hasText(condition)) {
-            where();
-            String processedCondition = condition;
-            for (Object value : values) {
-                int index = processedCondition.indexOf("?");
-                if (index != -1) {
-                    processedCondition = processedCondition.replaceFirst("\\?", "?" + (params.size() + 1));
-                    params.add(value);
-                }
+            int placeholderCount = countPlaceholders(condition);
+            if (values == null) {
+                values = new Object[0];
             }
-            hql.append(processedCondition).append(" ");
+            if (placeholderCount != values.length) {
+                throw new IllegalArgumentException(
+                        "appendCondition: expected " + placeholderCount
+                                + " value(s) to match placeholder(s) in condition, got " + values.length
+                                + " — condition=" + condition);
+            }
+            where();
+            StringBuilder processed = new StringBuilder();
+            int cursor = 0;
+            for (Object value : values) {
+                int idx = condition.indexOf('?', cursor);
+                if (idx < 0) {
+                    break;
+                }
+                processed.append(condition, cursor, idx);
+                processed.append('?').append(params.size() + 1);
+                params.add(value);
+                cursor = idx + 1;
+            }
+            processed.append(condition, cursor, condition.length());
+            hql.append(processed).append(" ");
         }
         return this;
     }
 
+    private static int countPlaceholders(String s) {
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == '?') {
+                count++;
+            }
+        }
+        return count;
+    }
+
     /**
-     * 添加原始 HQL 片段
+     * 追加原始 HQL 片段。
+     * <p><b>警告：</b>此方法直接拼接字符串，若传入外部不可信参数存在 HQL/SQL 注入风险，
+     * 请仅用于拼接字段名、JOIN 条件等受控片段；值一律走 {@code eq/like/in} 等参数化方法。</p>
      */
     public HqlQueryBuilder<T> append(String fragment) {
         if (StringUtils.hasText(fragment)) {
