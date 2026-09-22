@@ -24,6 +24,7 @@ import java.util.Optional;
 @Slf4j
 @SpringBootTest
 @Transactional
+@Commit
 public class DfApiDictItemRepositoryTest {
     @Autowired
     private DfApiDictItemRepository dfApiDictItemRepository;

@@ -24,7 +24,7 @@ spring:
     # 兜底：让 Hibernate 自己直接打印 SQL，与 p6spy 无关；只要 Hibernate 真的发出 SQL 就一定能在控制台看见
     show-sql: true
     hibernate:
-      ddl-auto: create-drop
+#      ddl-auto: create-drop
   # 项目根下有 compose.yaml，避免 spring-boot:run 期间 docker compose up 失败
   docker:
     compose:
