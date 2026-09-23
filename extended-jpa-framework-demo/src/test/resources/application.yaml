@@ -12,14 +12,16 @@ spring:
     driver-class-name: com.p6spy.engine.spy.P6SpyDriver
     # jdbc:p6spy: 前缀 → 由 p6spy 委托给底层 H2 驱动；spy.properties 全局生效
     # NON_KEYWORDS：放行 ps_lawcase 中 year / month 等 H2 保留字列名
-    url: jdbc:p6spy:h2:mem:framework;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;NON_KEYWORDS=YEAR,MONTH,DAY,HOUR,MINUTE,SECOND,VALUE,KEY
-    username: sa
-    password: ''
+#    url: jdbc:p6spy:h2:mem:framework;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;NON_KEYWORDS=YEAR,MONTH,DAY,HOUR,MINUTE,SECOND,VALUE,KEY
+#    username: sa
+#    password: ''
+    url: jdbc:p6spy:mysql://192.168.0.113:3306/jw-v1?useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&useSSL=true&autoReconnect=true&connecTimeout=10000&socketTimeout=10000
+    username: root
+    password: root
   jpa:
     show-sql: true
-    generate-ddl: true
+#    generate-ddl: true
     hibernate:
-      ddl-auto: create-drop
     properties:
       hibernate:
         format_sql: false
