@@ -1,6 +1,5 @@
 package org.gravitywavetech.order.infrastructure.repository.jpa;
 
-import org.gravitywavetech.extended.jpa.demo.entity.DfApiDictItem;
 import org.gravitywavetech.extended.jpa.repository.ExtendedBaseRepository;
 
 /**

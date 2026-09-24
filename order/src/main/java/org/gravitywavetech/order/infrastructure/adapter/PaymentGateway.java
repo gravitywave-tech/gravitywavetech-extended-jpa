@@ -1,6 +1,6 @@
 package org.gravitywavetech.order.infrastructure.adapter;
 
-import org.gravitywavetech.domain.model.Money;
+import org.gravitywavetech.order.domain.model.Money;
 
 /**
  * PaymentGateway

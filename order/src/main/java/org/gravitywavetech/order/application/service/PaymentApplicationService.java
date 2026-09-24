@@ -1,8 +1,8 @@
-package org.gravitywavetech.application.service;
+package org.gravitywavetech.order.application.service;
 
-import org.gravitywavetech.application.command.PayCommand;
-import org.gravitywavetech.domain.model.Order;
-import org.gravitywavetech.domain.repository.OrderRepository;
+import org.gravitywavetech.order.application.command.PayCommand;
+import org.gravitywavetech.order.domain.model.Order;
+import org.gravitywavetech.order.domain.repository.OrderRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

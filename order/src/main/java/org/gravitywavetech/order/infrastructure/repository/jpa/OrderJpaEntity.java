@@ -2,7 +2,7 @@ package org.gravitywavetech.order.infrastructure.repository.jpa;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import org.gravitywavetech.domain.model.OrderStatus;
+import org.gravitywavetech.order.domain.model.OrderStatus;
 
 import java.math.BigDecimal;
 

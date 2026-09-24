@@ -1,8 +1,8 @@
 package org.gravitywavetech.order.interfaces.controller;
-import org.gravitywavetech.application.command.PayCommand;
-import org.gravitywavetech.application.service.PaymentApplicationService;
-import org.gravitywavetech.domain.model.Money;
-import org.gravitywavetech.domain.model.OrderId;
+import org.gravitywavetech.order.application.command.PayCommand;
+import org.gravitywavetech.order.application.service.PaymentApplicationService;
+import org.gravitywavetech.order.domain.model.Money;
+import org.gravitywavetech.order.domain.model.OrderId;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;

@@ -1,6 +1,5 @@
 package org.gravitywavetech.order.infrastructure.repository.jpa;
 
-import org.gravitywavetech.extended.jpa.demo.entity.PsLawcase;
 import org.gravitywavetech.extended.jpa.repository.ExtendedBaseRepository;
 
 /**
