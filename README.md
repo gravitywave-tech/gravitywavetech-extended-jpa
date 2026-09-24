@@ -5,7 +5,7 @@
 
 业务侧继承 `ExtendedBaseRepository<T, ID>` 一行即可获得：
 
-- 完整 CRUD（覆盖 `save()`，在 `String` 主键为空时自动补 Base58 编码的 UUID）
+- 完整 CRUD（覆盖 `save()`；`String` 主键为空自动补 Base58 UUID，`Long` / `long` 主键为空自动补雪花 ID）
 - 审计字段（`CREATE_TIME / UPDATE_TIME / CREATOR_ID / UPDATOR_ID`）由 Spring Data JPA Auditing 自动填充
 - `NativeQueryBuilder<T> nativeQuery()` / `HqlQueryBuilder<T> hqlQuery()` / `CriteriaQueryBuilder<T> criteriaQuery()` 三个泛型安全的动态查询入口
 - 全部继承自 `JpaRepository<T, ID>` 和 `JpaSpecificationExecutor<T>` 的原生能力（按方法名查询、Spec 等）
@@ -168,9 +168,14 @@ Page<PsLawcase> page = repo.findByCriteria(
 
 ### 4. `save()` 语义
 
-- `String` 主键且未显式设置 → 自动补 Base58 编码的 UUID；
+- **主键生成按 `@Id` 字段类型分发**（注册表驱动，新增类型只需在 `BaseRepositoryImpl.GENERATORS` 加一行）：
+  - `String` 主键为空 → 自动补 Base58 编码的 UUID；
+  - `Long` / `long` 主键为空 → 自动补雪花 ID（由 `SnowflakeUtil` 提供）；
+  - 类型无内置生成器且缺 `@GeneratedValue` → 抛 `IllegalArgumentException`；
 - 审计字段完全交由 Spring Data Auditing 处理，框架不再重复赋值；
 - 通过 `isNew()` 决定 `persist` 还是 `merge`，避免 `SimpleJpaRepository` 在"主键已生成但未持久化"场景下错误走 `merge`。
+
+**Snowflake 配置**：worker id 通过系统属性 `extended.jpa.snowflake.worker-id` 或环境变量 `EXTENDED_JPA_SNOWFLAKE_WORKER_ID` 设置，取值 `[0, 1023]`，默认 0。多机部署时**必须**为每个进程分配不同的 worker id，否则可能生成重复 ID。
 
 ---
 

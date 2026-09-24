@@ -6,7 +6,6 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Transient;
-import org.gravitywavetech.extended.jpa.util.UuidUtil;
 import org.hibernate.Hibernate;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -24,7 +23,8 @@ import java.util.Objects;
  *
  * <p>为所有业务实体提供统一的主键契约、审计字段、逻辑删除与排序等公共能力，遵循以下约定：</p>
  * <ul>
- *   <li><b>主键</b>：由子类声明（通常为 Base58 编码的 UUID 字符串），可通过 {@link #generateId()} 生成；</li>
+ *   <li><b>主键</b>：由子类声明；支持 {@code String}（save 时自动补 Base58 UUID）与
+ *       {@code Long}/{@code long}（save 时自动补雪花 ID），也允许业务在构造时预置主键值；</li>
  *   <li><b>审计</b>：{@code CREATE_TIME / UPDATE_TIME / CREATOR_ID / UPDATOR_ID} 由 Spring Data JPA
  *       审计能力自动填充。启用方式：在启动类或配置类上添加 {@code @EnableJpaAuditing}，
  *       并按需提供 {@code AuditorAware}（不提供时审计人字段留空，但不会报错）；</li>
@@ -128,18 +128,6 @@ public abstract class BaseEntity<ID extends Serializable> implements Persistable
     @PostLoad
     protected void postLoad() {
         this.isNew = false;
-    }
-
-    /**
-     * 生成主键，默认返回 Base58 编码的 UUID 字符串。
-     *
-     * <p>该默认实现适用于 {@code String} 主键；若子类主键为其他类型，请重写本方法或自行生成主键。</p>
-     *
-     * @return 生成的主键
-     */
-    @SuppressWarnings("unchecked")
-    protected ID generateId() {
-        return (ID) UuidUtil.base58Uuid();
     }
 
     /**

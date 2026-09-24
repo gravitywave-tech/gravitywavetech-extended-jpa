@@ -1,6 +1,7 @@
 package org.gravitywavetech.extended.jpa.repository;
 
 import org.gravitywavetech.extended.jpa.entity.BaseEntity;
+import org.gravitywavetech.extended.jpa.util.SnowflakeUtil;
 import org.gravitywavetech.extended.jpa.util.UuidUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.GeneratedValue;
@@ -16,6 +17,7 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -23,7 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>职责边界（与查询能力彻底分离）：</p>
  * <ul>
- *     <li>无 {@code @GeneratedValue} 时的 String 主键 UUID 生成</li>
+ *     <li>无 {@code @GeneratedValue} 时按 {@code @Id} 字段类型自动补齐主键
+ *         （当前内置：{@code String} → Base58 UUID，{@code Long}/{@code long} → 雪花 ID）</li>
  *     <li>绕过父类 ID 强转问题的 persist / merge 分发</li>
  * </ul>
  *
@@ -59,6 +62,36 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
             new ConcurrentHashMap<>();
 
     /**
+     * 主键生成器注册表：按 {@code @Id} 字段的实际类型分发。
+     *
+     * <p>新增一种 ID 策略只需在此加一行，不必改动 {@link #save(Object)} 主体；
+     * 与 {@code SqlCountSupport} 的「唯一入口」原则一致。</p>
+     */
+    private static final Map<Class<?>, IdGenerator> GENERATORS = Map.of(
+            String.class, UuidUtil::base58Uuid,
+            Long.class,   SnowflakeUtil::nextId,
+            Long.TYPE,    SnowflakeUtil::nextId   // 原生 long 字段
+    );
+
+    /** 主键生成器：按 ID 字段类型生成新值。返回 {@code Serializable} 以直接喂给 {@code setId(ID)}。 */
+    @FunctionalInterface
+    private interface IdGenerator {
+        Serializable nextId();
+    }
+
+    /**
+     * 判断主键是否"未设置"：{@code null} 或空字符串（仅 String 类型适用）。
+     * 其他类型（如 {@code Long}）只认 {@code null} 为空——业务如需以 {@code 0} 等哨兵表示未设置，
+     * 请自行在保存前显式置空。
+     */
+    private static boolean isIdEmpty(Object id) {
+        if (id == null) {
+            return true;
+        }
+        return id instanceof String s && !StringUtils.hasLength(s);
+    }
+
+    /**
      * {@link #saveAll(Iterable)} 每批 flush 的实体数。与数据源 JDBC batching 配合
      * 才能真正把 N 个 INSERT 合并成少数 SQL 语句；单批过大将导致 flush 阶段 SQL 语句堆在内存里。
      */
@@ -91,7 +124,8 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
      * 自动填充，本方法不再重复处理。</p>
      *
      * <p>主键生成策略（{@code @GeneratedValue} 是否声明、{@code @Id} 字段的实际类型）
-     * 按实体类缓存，避免每次 save 都反射扫描继承链；仅当主键为空且非自动生成时才补 Base58 UUID。</p>
+     * 按实体类缓存，避免每次 save 都反射扫描继承链；主键为空且非 {@code @GeneratedValue} 时，
+     * 按 {@link #GENERATORS} 注册表按类型自动生成（String→Base58 UUID，Long→雪花 ID）。</p>
      */
     @Override
     @Transactional
@@ -103,21 +137,18 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
 
         if (entity instanceof BaseEntity<?> baseEntity) {
             Object currentId = baseEntity.getId();
-            boolean idIsEmpty = (currentId == null)
-                    || (currentId instanceof String && !StringUtils.hasLength((String) currentId));
-
-            if (idIsEmpty) {
+            if (isIdEmpty(currentId)) {
                 IdGenerationStrategy strategy = lookupIdStrategy(entity.getClass());
-                if (strategy.hasGeneratedValue) {
-                    // 交给 JPA 自动生成，不填充也不报错
-                } else if (strategy.idType == String.class) {
-                    ((BaseEntity) baseEntity).setId(UuidUtil.base58Uuid());
-                } else {
-                    throw new IllegalArgumentException(
-                            "主键为空且实体不是 Base58 String 主键，也缺少 @GeneratedValue，" +
-                                    "无法自动生成 ID: entity=" + entity.getClass().getName()
-                                    + ", idType=" + strategy.idType);
+                if (!strategy.hasGeneratedValue) {
+                    IdGenerator generator = GENERATORS.get(strategy.idType);
+                    if (generator == null) {
+                        throw new IllegalArgumentException(
+                                "主键为空且类型无内置生成器: entity=" + entity.getClass().getName()
+                                        + ", idType=" + strategy.idType);
+                    }
+                    ((BaseEntity) baseEntity).setId(generator.nextId());
                 }
+                // else: @GeneratedValue 由 JPA 自管，不填充也不报错
             }
         } else {
             // 非 BaseEntity 的实体：仅在非 @GeneratedValue 且主键为空时快速失败，避免 persist 时抛出难懂的 JPA 异常。
@@ -179,7 +210,9 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
     }
 
     /**
-     * 与 {@link #save(S)} 保持一致的主键补齐逻辑，抽出以便 {@link #saveAll(Iterable)} 复用。
+     * 与 {@link #save(S)} 一致的主键补齐逻辑，与 save 共享 {@link #GENERATORS} 注册表。
+     *
+     * <p>预留供后续按业务语义在特定路径复用（如脱离 save 的批量预处理）；当前无调用方。</p>
      */
     @SuppressWarnings("rawtypes")
     private void ensureId(Object entity) {
@@ -187,14 +220,16 @@ public class BaseRepositoryImpl<T, ID extends Serializable> extends SimpleJpaRep
             return;
         }
         Object currentId = baseEntity.getId();
-        boolean idIsEmpty = (currentId == null)
-                || (currentId instanceof String && !StringUtils.hasLength((String) currentId));
-        if (!idIsEmpty) {
+        if (!isIdEmpty(currentId)) {
             return;
         }
         IdGenerationStrategy strategy = lookupIdStrategy(entity.getClass());
-        if (!strategy.hasGeneratedValue && strategy.idType == String.class) {
-            ((BaseEntity) baseEntity).setId(UuidUtil.base58Uuid());
+        if (strategy.hasGeneratedValue) {
+            return; // @GeneratedValue 由 JPA 自管
+        }
+        IdGenerator generator = GENERATORS.get(strategy.idType);
+        if (generator != null) {
+            ((BaseEntity) baseEntity).setId(generator.nextId());
         }
     }
 
