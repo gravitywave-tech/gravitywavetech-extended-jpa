@@ -54,6 +54,32 @@ public class Order {
     }
 
     /**
+     * 从持久化状态重建聚合（不触发 OrderCreatedEvent，不做金额校验）。
+     *
+     * <p>用于 Repository 加载已存在的订单：数据库中的状态是合法的，
+     * 不应重新走 create 工厂的初始化逻辑（那会把 status 重置为 WAITING_PAYMENT）。</p>
+     */
+    public static Order rehydrate(OrderId id, Long buyerId, List<OrderItem> items,
+                                  Address address, OrderStatus status, Money totalAmount) {
+        Order order = new Order();
+        order.id = id;
+        order.buyerId = buyerId;
+        order.items = new ArrayList<>(items);
+        order.shippingAddress = address;
+        order.status = status;
+        order.totalAmount = totalAmount;
+        return order;
+    }
+
+    /**
+     * 领域行为：修改收货地址（仅未支付状态允许）。
+     */
+    public void updateAddress(Address newAddress) {
+        ensureStatus(OrderStatus.WAITING_PAYMENT);
+        this.shippingAddress = newAddress;
+    }
+
+    /**
      * 领域行为：支付（原文示例）
      */
     public void pay(Money paidAmount) {

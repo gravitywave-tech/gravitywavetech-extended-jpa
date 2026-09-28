@@ -30,6 +30,19 @@ spring:
           group: payment-service-group
       function:
         definition: createPaymentConsumer
+  jpa:
+    hibernate:
+      # dev 环境自动建表（含 t_outbox_message）；生产环境请改用 Flyway/Liquibase
+      ddl-auto: update
+
+# Outbox 可靠消息调度器
+outbox:
+  dispatcher:
+    enabled: true
+    # 单次扫描消息条数上限
+    batch-size: 50
+    # 扫描间隔（毫秒），指数退避由 OutboxMessage 内部维护
+    interval-ms: 3000
 
 logging:
   file:

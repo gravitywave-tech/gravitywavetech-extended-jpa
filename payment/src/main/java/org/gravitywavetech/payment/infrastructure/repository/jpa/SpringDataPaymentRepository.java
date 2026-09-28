@@ -46,6 +46,7 @@ public class SpringDataPaymentRepository implements PaymentRepository {
         entity.setPaymentMethod(payment.getPaymentMethod());
         entity.setStatus(payment.getStatus());
         entity.setThirdPartyTradeNo(payment.getThirdPartyTradeNo());
+        entity.setPaidAt(payment.getPaidAt());
         jpaRepository.save(entity);
     }
 }

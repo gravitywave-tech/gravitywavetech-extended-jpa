@@ -17,7 +17,7 @@ spring:
 #    username: sa
 #    password: ''
     driver-class-name: com.p6spy.engine.spy.P6SpyDriver
-    url: jdbc:p6spy:mysql://192.168.0.113:3306/jw-v1?useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&useSSL=true&autoReconnect=true&connecTimeout=10000&socketTimeout=10000
+    url: jdbc:p6spy:mysql://192.168.0.113:3306/gravitytech?useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&useSSL=true&autoReconnect=true&connecTimeout=10000&socketTimeout=10000
     username: root
     password: root
   jpa:

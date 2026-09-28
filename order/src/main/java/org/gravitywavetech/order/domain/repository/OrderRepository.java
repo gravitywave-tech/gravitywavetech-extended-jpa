@@ -4,6 +4,8 @@ import org.gravitywavetech.order.domain.exception.OrderNotFoundException;
 import org.gravitywavetech.order.domain.model.Order;
 import org.gravitywavetech.order.domain.model.OrderId;
 
+import java.util.List;
+
 /**
  * OrderRepository
  *
@@ -16,4 +18,6 @@ import org.gravitywavetech.order.domain.model.OrderId;
 public interface OrderRepository {
     Order findById(OrderId orderId) throws OrderNotFoundException;
     void save(Order order);
+    void delete(Order order);
+    List<Order> findAll();
 }

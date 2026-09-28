@@ -1,16 +1,8 @@
 package org.gravitywavetech.order.infrastructure.repository;
 
-/**
- * SpringDataOrderRepository
- *
- * <p></p>
- *
- * @author Administrator
- * @version 1.0
- * @since 2026/9/24
- */
 import org.gravitywavetech.order.domain.exception.OrderNotFoundException;
 import org.gravitywavetech.order.domain.model.Address;
+import org.gravitywavetech.order.domain.model.Money;
 import org.gravitywavetech.order.domain.model.Order;
 import org.gravitywavetech.order.domain.model.OrderId;
 import org.gravitywavetech.order.domain.repository.OrderRepository;
@@ -20,6 +12,15 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/**
+ * SpringDataOrderRepository
+ *
+ * <p></p>
+ *
+ * @author Administrator
+ * @version 1.0
+ * @since 2026/9/24
+ */
 @Repository
 public class SpringDataOrderRepository implements OrderRepository {
     private final OrderJpaRepository jpaRepository;
@@ -32,19 +33,41 @@ public class SpringDataOrderRepository implements OrderRepository {
     public Order findById(OrderId orderId) {
         OrderJpaEntity jpaEntity = jpaRepository.findById(orderId.getId())
                 .orElseThrow(OrderNotFoundException::new);
-        // 【转换器】jpaEntity -> Order聚合根，实际项目抽单独Mapper类
-        Address address = Address.of(jpaEntity.getProvince(), jpaEntity.getCity(), jpaEntity.getDetailAddress());
-        // 这里简化演示，实际要加载OrderItem列表
-        return Order.create(
-                new OrderId(jpaEntity.getId()),
-                jpaEntity.getBuyerId(),
-                List.of(),
-                address
-        );
+        return toDomain(jpaEntity);
     }
 
     @Override
     public void save(Order order) {
+        OrderJpaEntity jpaEntity = toJpaEntity(order);
+        jpaRepository.save(jpaEntity);
+    }
+
+    @Override
+    public void delete(Order order) {
+        jpaRepository.delete(toJpaEntity(order));
+    }
+
+    @Override
+    public List<Order> findAll() {
+        return jpaRepository.findAll().stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    private Order toDomain(OrderJpaEntity jpaEntity) {
+        Address address = Address.of(jpaEntity.getProvince(), jpaEntity.getCity(), jpaEntity.getDetailAddress());
+        // 用 rehydrate 而非 create，避免把 status 重置为 WAITING_PAYMENT、也避免重复发 OrderCreatedEvent
+        return Order.rehydrate(
+                new OrderId(jpaEntity.getId()),
+                jpaEntity.getBuyerId(),
+                List.of(),
+                address,
+                jpaEntity.getStatus(),
+                Money.of(jpaEntity.getTotalAmount())
+        );
+    }
+
+    private OrderJpaEntity toJpaEntity(Order order) {
         OrderJpaEntity jpaEntity = new OrderJpaEntity();
         jpaEntity.setId(order.getId().getId());
         jpaEntity.setBuyerId(order.getBuyerId());
@@ -53,6 +76,6 @@ public class SpringDataOrderRepository implements OrderRepository {
         jpaEntity.setProvince(order.getShippingAddress().getProvince());
         jpaEntity.setCity(order.getShippingAddress().getCity());
         jpaEntity.setDetailAddress(order.getShippingAddress().getDetail());
-        jpaRepository.save(jpaEntity);
+        return jpaEntity;
     }
 }

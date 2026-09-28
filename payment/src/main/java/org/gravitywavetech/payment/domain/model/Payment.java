@@ -26,6 +26,7 @@ public class Payment {
     private PaymentMethod paymentMethod;
     private PaymentStatus status;
     private String thirdPartyTradeNo; // 第三方网关流水号
+    private Instant paidAt;           // 支付成功时间
 
     // 待发布领域事件，聚合内暂存
     private final List<Object> domainEvents = new ArrayList<>();
@@ -60,12 +61,13 @@ public class Payment {
         }
         this.status = PaymentStatus.SUCCESS;
         this.thirdPartyTradeNo = thirdPartyTradeNo;
+        this.paidAt = Instant.now();
         domainEvents.add(new PaymentSuccessEvent(
                 this.id,
                 this.orderRef,
                 this.amount,
                 thirdPartyTradeNo,
-                Instant.now()
+                this.paidAt
         ));
     }
 
@@ -97,4 +99,5 @@ public class Payment {
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public PaymentStatus getStatus() { return status; }
     public String getThirdPartyTradeNo() { return thirdPartyTradeNo; }
+    public Instant getPaidAt() { return paidAt; }
 }
