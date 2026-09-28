@@ -1,7 +1,8 @@
 package org.gravitywavetech.extended.jpa.repository;
 
 import lombok.extern.slf4j.Slf4j;
-import org.gravitywavetech.extended.jpa.demo.entity.DfApiDictItem;
+import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItem;
+import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItemJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,7 +28,7 @@ import java.util.Optional;
 @Commit
 public class DfApiDictItemRepositoryTest {
     @Autowired
-    private DfApiDictItemRepository dfApiDictItemRepository;
+    private DfApiDictItemJpaRepository dfApiDictItemRepository;
 
     @Test
     public void findById(){

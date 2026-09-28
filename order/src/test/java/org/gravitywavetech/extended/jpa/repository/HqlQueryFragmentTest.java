@@ -1,8 +1,6 @@
 package org.gravitywavetech.extended.jpa.repository;
 
-import org.gravitywavetech.extended.jpa.demo.entity.PsLawcase;
-import org.gravitywavetech.extended.jpa.repository.HqlQueryBuilder;
-import org.gravitywavetech.extended.jpa.repository.HqlQueryFragmentImpl;
+import org.gravitywavetech.order.infrastructure.repository.jpa.PsLawcase;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

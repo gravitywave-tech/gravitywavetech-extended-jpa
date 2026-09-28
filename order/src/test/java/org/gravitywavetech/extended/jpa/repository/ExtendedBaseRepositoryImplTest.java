@@ -1,7 +1,7 @@
 package org.gravitywavetech.extended.jpa.repository;
 
-import org.gravitywavetech.extended.jpa.demo.entity.DfApiDictItem;
-import org.gravitywavetech.extended.jpa.demo.entity.PsLawcase;
+import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItem;
+import org.gravitywavetech.order.infrastructure.repository.jpa.PsLawcase;
 import org.gravitywavetech.extended.jpa.repository.CriteriaQueryBuilder;
 import org.gravitywavetech.extended.jpa.repository.ExtendedBaseRepositoryImpl;
 import org.gravitywavetech.extended.jpa.repository.HqlQueryBuilder;

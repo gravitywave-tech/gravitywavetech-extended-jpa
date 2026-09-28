@@ -2,13 +2,36 @@ server:
   port: 8012
   servlet:
     context-path: /
+
 spring:
   application:
-    name: framework
+    name: order-service
   profiles:
     active: dev
+  cloud:
+    eureka:
+      client:
+        service-url:
+          defaultZone: http://localhost:8761/eureka/
+        instance:
+          prefer-ip-address: true
+          lease-renewal-interval-in-seconds: 10
+          lease-expiration-duration-in-seconds: 30
+      instance:
+        instance-id: ${spring.application.name}:${server.port}
+    stream:
+      # 直接以 queue 名作为 destination，Spring Cloud Stream 用默认 exchange 路由
+      bindings:
+        paymentCreate-out-0:
+          destination: payment.create
+          group: order-service-group
+        paymentSuccess-in-0:
+          destination: order.payment-callback
+          group: order-service-group
+      function:
+        definition: paymentSuccessConsumer
+
 logging:
   file:
     path: ./logs
   config: classpath:logback-spring-${spring.profiles.active}.xml
-# application.yml

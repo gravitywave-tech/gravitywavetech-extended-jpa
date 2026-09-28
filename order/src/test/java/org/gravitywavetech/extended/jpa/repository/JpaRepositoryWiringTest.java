@@ -1,7 +1,9 @@
 package org.gravitywavetech.extended.jpa.repository;
 
-import org.gravitywavetech.extended.jpa.demo.entity.DfApiDictItem;
-import org.gravitywavetech.extended.jpa.demo.entity.PsLawcase;
+import org.gravitywavetech.order.domain.repository.DfApiDictItemRepository;
+import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItem;
+import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItemJpaRepository;
+import org.gravitywavetech.order.infrastructure.repository.jpa.PsLawcase;
 import org.gravitywavetech.extended.jpa.repository.ExtendedBaseRepositoryImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JpaRepositoryWiringTest {
 
     @Autowired
-    private DfApiDictItemRepository repository;
+    private DfApiDictItemJpaRepository repository;
 
     @Test
     @DisplayName("接线生效：仓储基类为 ExtendedBaseRepositoryImpl 而非 SimpleJpaRepository")
