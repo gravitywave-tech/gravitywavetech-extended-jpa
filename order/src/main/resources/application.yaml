@@ -29,7 +29,8 @@ spring:
           destination: order.payment-callback
           group: order-service-group
       function:
-        definition: paymentSuccessConsumer
+        # 语法：函数名=Bean 名（函数名必须等于 binding 前缀，如 paymentSuccess-in-0 → 函数名 paymentSuccess）
+        definition: paymentSuccess=paymentSuccessConsumer
 
 logging:
   file:

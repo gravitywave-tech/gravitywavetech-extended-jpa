@@ -29,7 +29,8 @@ spring:
           destination: order.payment-callback
           group: payment-service-group
       function:
-        definition: createPaymentConsumer
+        # 语法：函数名=Bean 名（函数名必须等于 binding 前缀，如 paymentCreate-in-0 → 函数名 paymentCreate）
+        definition: paymentCreate=createPaymentConsumer
   jpa:
     hibernate:
       # dev 环境自动建表（含 t_outbox_message）；生产环境请改用 Flyway/Liquibase
