@@ -28,13 +28,12 @@ spring:
         paymentSuccess-out-0:
           destination: order.payment-callback
           group: payment-service-group
-      function:
-        # 语法：函数名=Bean 名（函数名必须等于 binding 前缀，如 paymentCreate-in-0 → 函数名 paymentCreate）
-        definition: paymentCreate=createPaymentConsumer
-  jpa:
-    hibernate:
-      # dev 环境自动建表（含 t_outbox_message）；生产环境请改用 Flyway/Liquibase
-      ddl-auto: update
+    # ⚠️ Spring Cloud Function 5.0.0 起属性前缀改为 spring.cloud.function（不再嵌在 stream 下）。
+    # 5.0.4 起已移除「函数名=Bean 名」别名语法，函数名必须直接等于 Bean 名，
+    # 且 Bean 名必须等于 binding 前缀（paymentCreate-in-0 → Bean 名 paymentCreate）。
+    function:
+      definition: paymentCreate
+
 
 # Outbox 可靠消息调度器
 outbox:

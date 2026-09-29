@@ -11,21 +11,24 @@ import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.function.Consumer;
+
 /**
  * 消费 payment 服务发出的支付成功消息，驱动 Order 聚合的 pay() 领域行为。
  *
- * <p>替代原 PaymentSuccessListener 直接跨服务访问 OrderRepository 的反模式：
- * 现在 order 服务仅通过消息驱动，本地事务只覆盖本聚合。</p>
+ * <p>Bean 名称必须等于 binding 前缀（{@code paymentSuccess-in-0} → Bean 名 {@code paymentSuccess}），
+ * 通过 {@code spring.cloud.function.definition=paymentSuccess} 声明函数名。</p>
  */
 @Slf4j
-@Component
+@Component("paymentSuccess")
 @RequiredArgsConstructor
-public class PaymentSuccessConsumer {
+public class PaymentSuccessConsumer implements Consumer<Message<PaymentSuccessMessage>> {
 
     private final OrderRepository orderRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
+    @Override
     public void accept(Message<PaymentSuccessMessage> message) {
         PaymentSuccessMessage payload = message.getPayload();
         log.info("消费支付成功消息，paymentId={}, orderId={}, tradeNo={}",
