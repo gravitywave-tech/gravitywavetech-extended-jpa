@@ -28,6 +28,10 @@ spring:
         paymentSuccess-in-0:
           destination: order.payment-callback
           group: order-service-group
+        # 订单支付成功后，向 inventory 服务发送扣减库存请求
+        inventoryDeduct-out-0:
+          destination: inventory.deduct
+          group: order-service-group
     # ⚠️ Spring Cloud Function 5.0.0 起属性前缀改为 spring.cloud.function（不再嵌在 stream 下）。
     # 5.0.4 起已移除「函数名=Bean 名」别名语法，函数名必须直接等于 Bean 名，
     # 且 Bean 名必须等于 binding 前缀（paymentSuccess-in-0 → Bean 名 paymentSuccess）。

@@ -1,0 +1,37 @@
+server:
+  port: 8014
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: inventory-service
+  profiles:
+    active: dev
+  cloud:
+    eureka:
+      client:
+        service-url:
+          defaultZone: http://localhost:8761/eureka/
+        instance:
+          prefer-ip-address: true
+          lease-renewal-interval-in-seconds: 10
+          lease-expiration-duration-in-seconds: 30
+      instance:
+        instance-id: ${spring.application.name}:${server.port}
+    stream:
+      # 接收 order 服务发来的扣减库存请求（destination=inventory.deduct）
+      bindings:
+        inventoryDeduct-in-0:
+          destination: inventory.deduct
+          group: inventory-service-group
+    # ⚠️ Spring Cloud Function 5.0.4 起移除了「函数名=Bean 名」别名语法，
+    # 函数名必须直接等于 Bean 名，且 Bean 名必须等于 binding 前缀
+    # （inventoryDeduct-in-0 → Bean 名 inventoryDeduct）。
+    function:
+      definition: inventoryDeduct
+
+logging:
+  file:
+    path: ./logs
+  config: classpath:logback-spring-${spring.profiles.active}.xml

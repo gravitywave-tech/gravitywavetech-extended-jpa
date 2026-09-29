@@ -1,0 +1,29 @@
+# dev profile 专用配置
+#
+# 目的：让本地启动可以工作 —— 使用 H2 内存库 + MODE=MySQL，
+# 不依赖外部 MySQL。
+#
+# 生产/sit 走 application-sit.yaml 或 application-prod.yaml。
+spring:
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+    url: jdbc:p6spy:h2:mem:inventorydb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;NON_KEYWORDS=VALUE,KEY,USER,ORDER,PRODUCT,STATUS,AMOUNT
+    username: sa
+    password: ''
+    hikari:
+      pool-name: inventory-hikari
+      minimum-idle: 2
+      maximum-pool-size: 10
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Shanghai
+  docker:
+    compose:
+      enabled: false
