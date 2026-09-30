@@ -248,7 +248,7 @@ new ExtendedBaseRepositoryImpl(entityInformation, entityManager)
 
 1. **片段接口必须参数化**（`<T>`）。否则返回值只能是 `?`，业务侧必须强转。
 2. `ExtendedJpaRepositoryFactory.getRepositoryFragments()` 中 `metadata.getDomainType()` 只有 `Class<?>`，无法直接实例化参数化片段，代码里做了一次受控的 raw 转换并压制告警。改这一段要小心。
-3. `HqlQueryBuilder.select("id", "caseno")` **不能**与 `selectExpression(expression, alias)` 冲突。Java 重载解析会优先匹配固定元数方法，`select("id", "caseno")` 会被静默当成"表达式 + 别名"生成 `SELECT id AS caseno`。
+3. `HqlQueryBuilder.select("id", "thirdPartyTradeNo")` **不能**与 `selectExpression(expression, alias)` 冲突。Java 重载解析会优先匹配固定元数方法，`select("id", "thirdPartyTradeNo")` 会被静默当成"表达式 + 别名"生成 `SELECT id AS id`。
 4. `CriteriaQueryBuilder` 的 `predicate(Predicate)` / `or(...)` / `and(...)` 会把绑定到当前 `Root` 的外部 Predicate 加入 `externalPredicates`，`count()` 会显式抛 `IllegalStateException`。分页 / 统计请只用内置的 `eq/like/gt/...`。
 5. **COUNT 生成规则集中在 `SqlCountSupport`**：Native SQL 统一子查询包装；HQL 剥离后重拼，含 `GROUP BY` / `UNION` / 子查询时抛异常，要求调用方通过 `countHql("SELECT COUNT(*) ...")` 显式设置。
 6. 分页统一走 `setFirstResult/setMaxResults`，让 Hibernate 处理方言差异，不要在 SQL 里手写 `LIMIT`。
