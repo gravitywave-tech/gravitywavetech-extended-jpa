@@ -92,13 +92,12 @@ Windows 下使用 `mvnw.cmd`。
 
 ```java
 @Entity
-@Table(name = "ps_lawcase")
-public class PsLawcase extends BaseEntity<String> {
+@Table(name = "t_payment")
+public class PaymentJpaEntity extends BaseEntity<Long> {
     @Id
-    private String id;
+    private Long id;
 
-    @Column(name = "case_no")
-    private String caseNo;
+
     // ...
 }
 ```
@@ -108,18 +107,18 @@ public class PsLawcase extends BaseEntity<String> {
 **推荐方式：继承 `ExtendedBaseRepository<T, ID>`**
 
 ```java
-public interface PsLawcaseRepository extends ExtendedBaseRepository<PsLawcase, String> {
+public interface PaymentJpaRepository extends ExtendedBaseRepository<PaymentJpa, Long> {
     // 也可以按需声明按方法名查询
-    List<PsLawcase> findByCaseNo(String caseNo);
+    List<PaymentJpa> findByThirdPartyTradeNo(String thirdPartyTradeNo);
 }
 ```
 
 **按需方式：只继承需要的片段**
 
 ```java
-public interface PsLawcaseRepository
-        extends JpaRepository<PsLawcase, String>,
-                HqlQueryFragment<PsLawcase> {
+public interface PaymentJpaRepository
+        extends JpaRepository<PaymentJpa, Long>,
+                HqlQueryFragment<PaymentJpa> {
 }
 ```
 
@@ -130,26 +129,26 @@ public interface PsLawcaseRepository
 **Native SQL** —— 位置参数 `?1 ?2 ...`，分页交给 Hibernate 方言翻译，不手动拼 `LIMIT`：
 
 ```java
-NativeQueryBuilder<PsLawcase> builder = repo
+NativeQueryBuilder<PaymentJpa> builder = repo
     .nativeQuery()
-    .select("id", "case_no", "create_time")
-    .from("ps_lawcase", "t")
+    .select("id", "order_ref_id", "create_time")
+    .from("t_payment", "t")
     .eqWithAlias("t", "delete_status", "N")
-    .likeWithAlias("t", "case_no", keyword, LikeMode.ANY)
+    .likeWithAlias("t", "third_party_trade_no", keyword, LikeMode.ANY)
     .orderByWithAlias("t", "create_time", "DESC")
     .limit(offset, pageSize);
 
-List<PsLawcase> rows   = builder.list();
-Page<PsLawcase> page   = builder.page(pageable);
+List<PaymentJpa> rows   = builder.list();
+Page<PaymentJpa> page   = builder.page(pageable);
 List<Map<String,Object>> maps = builder.listForMap();
 ```
 
 **HQL** —— 字段自动加 `currentAlias.` 前缀（`from("c")` 决定别名）：
 
 ```java
-Page<PsLawcase> page = repo.hqlQuery()
+Page<PaymentJpa> page = repo.hqlQuery()
     .from("c")
-    .eq("caseNo", caseNo)
+    .eq("thirdPartyTradeNo", thirdPartyTradeNo)
     .isNotNull("deleteStatus")
     .orderBy("createTime", "DESC")
     .page(pageable);
@@ -158,9 +157,9 @@ Page<PsLawcase> page = repo.hqlQuery()
 **Criteria** —— 用 `BiFunction<CriteriaBuilder, Root<T>, Predicate>` 存"条件构造器"，`count()` 在新 Count Query 上重新生成 Predicate，避免跨 `Root` 复用问题：
 
 ```java
-Page<PsLawcase> page = repo.findByCriteria(
+Page<PaymentJpa> page = repo.findByCriteria(
     repo.criteriaQuery()
-        .eq("caseNo", caseNo)
+        .eq("thirdPartyTradeNo", thirdPartyTradeNo)
         .desc("createTime"),
     pageable
 );
