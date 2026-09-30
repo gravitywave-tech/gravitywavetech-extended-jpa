@@ -22,6 +22,7 @@
 		<module>gateway</module>
 		<module>order</module>
 		<module>payment</module>
+		<module>inventory</module>
 	</modules>
 
 	<properties>
