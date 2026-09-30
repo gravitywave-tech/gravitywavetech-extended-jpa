@@ -1,10 +1,7 @@
 package org.gravitywavetech.extended.jpa.repository;
 
-import org.gravitywavetech.order.domain.repository.DfApiDictItemRepository;
-import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItem;
-import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItemJpaRepository;
-import org.gravitywavetech.order.infrastructure.repository.jpa.PsLawcase;
-import org.gravitywavetech.extended.jpa.repository.ExtendedBaseRepositoryImpl;
+import org.gravitywavetech.order.infrastructure.repository.jpa.OrderJpaEntity;
+import org.gravitywavetech.order.infrastructure.repository.jpa.OrderJpaRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.framework.Advised;
@@ -23,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code @EnableJpaRepositories} 接线验证。
  *
  * <p>本测试证明 {@link org.gravitywavetech.extended.jpa.demo.config.JpaRepositoryConfig} 已被真正激活，
- * 即：{@link PsLawcaseRepository} 由 {@link ExtendedBaseRepositoryImpl} 承担实现，
+ * 即：{@link OrderJpaRepository} 由 {@link ExtendedBaseRepositoryImpl} 承担实现，
  * 而不是 Spring Data 默认的 {@code SimpleJpaRepository}。</p>
  *
  * <p>判定依据分三层，逐层收紧：</p>
@@ -43,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JpaRepositoryWiringTest {
 
     @Autowired
-    private DfApiDictItemJpaRepository repository;
+    private OrderJpaRepository repository;
 
     @Test
     @DisplayName("接线生效：仓储基类为 ExtendedBaseRepositoryImpl 而非 SimpleJpaRepository")
@@ -66,21 +63,11 @@ class JpaRepositoryWiringTest {
     @Test
     @DisplayName("Native SQL 端到端可用")
     void nativeSqlRunsEndToEnd() {
-        DfApiDictItem entity = new DfApiDictItem();
-        entity.setDictLabel("信访举报");
-        entity.setDictTypeCode("xsly");
-        entity.setDictValue("010");
-        entity.setParentDictValue("100");
-        entity.setCreateTime(LocalDateTime.now());
-        entity.setUpdateTime(LocalDateTime.now());
-        entity.setDeleteStatus("N");
-        entity.setCreatorId("tomcat");
-        entity.setUpdatorId("tocmat");
-        entity.setGroupDictValue("xsly");
+        OrderJpaEntity entity = new OrderJpaEntity();
         repository.saveAndFlush(entity);
 
         List<Map<String, Object>> rows =
-                repository.findByNativeSqlForMap("select count(*) as total_count from df_api_dict_item");
+                repository.findByNativeSqlForMap("select count(*) as total_count from t_order");
 
         assertThat(rows).hasSize(1);
 

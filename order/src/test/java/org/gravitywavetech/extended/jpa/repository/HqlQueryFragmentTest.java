@@ -1,7 +1,7 @@
 package org.gravitywavetech.extended.jpa.repository;
 
-import org.gravitywavetech.order.infrastructure.repository.jpa.PsLawcase;
 import lombok.extern.slf4j.Slf4j;
+import org.gravitywavetech.order.infrastructure.repository.jpa.OrderJpaEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +13,7 @@ import org.springframework.data.domain.Pageable;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -43,21 +43,21 @@ public class HqlQueryFragmentTest {
     private EntityManager entityManager;
 
     @Mock
-    private TypedQuery<PsLawcase> typedQuery;
+    private TypedQuery<OrderJpaEntity> typedQuery;
 
     @Mock
     private TypedQuery<Long> countQuery;
 
     /** 被测对象：直接构造，不走 Spring 容器。片段实现已参数化，泛型可完整保留 */
-    private HqlQueryFragmentImpl<PsLawcase> hqlFragment;
+    private HqlQueryFragmentImpl<OrderJpaEntity> hqlFragment;
 
     @BeforeEach
     public void setUp() {
-        hqlFragment = new HqlQueryFragmentImpl<>(entityManager, PsLawcase.class);
+        hqlFragment = new HqlQueryFragmentImpl<>(entityManager, OrderJpaEntity.class);
     }
 
-    /** 片段实现参数化后，直接返回 {@code HqlQueryBuilder<PsLawcase>}，无需强转 */
-    private HqlQueryBuilder<PsLawcase> newBuilder() {
+    /** 片段实现参数化后，直接返回 {@code HqlQueryBuilder<OrderJpaEntity>}，无需强转 */
+    private HqlQueryBuilder<OrderJpaEntity> newBuilder() {
         return hqlFragment.hqlQuery();
     }
 
@@ -66,11 +66,11 @@ public class HqlQueryFragmentTest {
     /** 演示：select + from + eq + like 的标准用法 */
     @Test
     public void hqlQuery_selectFromEqLike_generatesCorrectHqlAndParams() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
-                .select("id", "caseno")
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
+                .select("id", "province")
                 .from()
-                .eq("clueId", "DkCHuc")
-                .like("caseno", "Nx8sToawnGzgHcuqMH4k7w");
+                .eq("buyerId", 42L)
+                .like("province", "BJ");
 
         String hql = builder.getHql();
         List<Object> params = builder.getParams();
@@ -78,90 +78,90 @@ public class HqlQueryFragmentTest {
         log.info("生成的HQL: {}", hql);
         log.info("绑定参数: {}", params);
 
-        assertEquals("SELECT t.id, t.caseno FROM PsLawcase t WHERE t.clueId = ?1 AND t.caseno LIKE ?2 ", hql);
-        assertEquals(Arrays.asList("DkCHuc", "%Nx8sToawnGzgHcuqMH4k7w%"), params);
+        assertEquals("SELECT t.id, t.province FROM OrderJpaEntity t WHERE t.buyerId = ?1 AND t.province LIKE ?2 ", hql);
+        assertEquals(Arrays.asList(42L, "%BJ%"), params);
     }
 
     /** 演示：eq 传入 null 值时自动跳过条件（动态查询核心特性） */
     @Test
     public void hqlQuery_eqWithNullValue_skipsCondition() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .from()
-                .eq("clueId", null)
-                .eq("caseno", "C001");
+                .eq("buyerId", null)
+                .eq("province", "BJ");
 
-        assertEquals("FROM PsLawcase t WHERE t.caseno = ?1 ", builder.getHql());
-        assertEquals(Collections.singletonList("C001"), builder.getParams());
+        assertEquals("FROM OrderJpaEntity t WHERE t.province = ?1 ", builder.getHql());
+        assertEquals(Collections.singletonList("BJ"), builder.getParams());
     }
 
     /** 演示：IN 条件自动展开为多个位置参数 */
     @Test
     public void hqlQuery_inCondition_generatesInClause() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .from()
-                .in("id", Arrays.asList("1", "2", "3"));
+                .in("id", Arrays.asList(1L, 2L, 3L));
 
-        assertEquals("FROM PsLawcase t WHERE t.id IN (?1, ?2, ?3) ", builder.getHql());
-        assertEquals(Arrays.asList("1", "2", "3"), builder.getParams());
+        assertEquals("FROM OrderJpaEntity t WHERE t.id IN (?1, ?2, ?3) ", builder.getHql());
+        assertEquals(Arrays.asList(1L, 2L, 3L), builder.getParams());
     }
 
     /** 演示：BETWEEN 条件生成两个位置参数 */
     @Test
     public void hqlQuery_betweenCondition_generatesBetweenClause() {
-        LocalDateTime start = LocalDateTime.of(2026, 1, 1, 0, 0);
-        LocalDateTime end = LocalDateTime.of(2026, 12, 31, 23, 59);
+        BigDecimal start = new BigDecimal("100.00");
+        BigDecimal end = new BigDecimal("1000.00");
 
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .from()
-                .between("createTime", start, end);
+                .between("totalAmount", start, end);
 
-        assertEquals("FROM PsLawcase t WHERE t.createTime BETWEEN ?1 AND ?2 ", builder.getHql());
+        assertEquals("FROM OrderJpaEntity t WHERE t.totalAmount BETWEEN ?1 AND ?2 ", builder.getHql());
         assertEquals(Arrays.asList(start, end), builder.getParams());
     }
 
     /** 演示：IS NULL / IS NOT NULL 条件 */
     @Test
     public void hqlQuery_isNullAndIsNotNull_generatesCorrectClauses() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .from()
-                .isNull("deleteStatus")
-                .isNotNull("caseno");
+                .isNull("city")
+                .isNotNull("province");
 
-        assertEquals("FROM PsLawcase t WHERE t.deleteStatus IS NULL AND t.caseno IS NOT NULL ", builder.getHql());
+        assertEquals("FROM OrderJpaEntity t WHERE t.city IS NULL AND t.province IS NOT NULL ", builder.getHql());
     }
 
     /** 演示：ORDER BY 子句 */
     @Test
     public void hqlQuery_orderBy_generatesOrderByClause() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .from()
-                .orderBy("createTime", "DESC");
+                .orderBy("totalAmount", "DESC");
 
-        assertEquals("FROM PsLawcase t ORDER BY t.createTime DESC ", builder.getHql());
+        assertEquals("FROM OrderJpaEntity t ORDER BY t.totalAmount DESC ", builder.getHql());
     }
 
     /** 演示：自定义别名（from("p")），后续条件自动使用该别名前缀 */
     @Test
     public void hqlQuery_fromWithCustomAlias_usesAliasInConditions() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .from("p")
-                .eq("clueId", "C001")
-                .like("caseno", "2026");
+                .eq("buyerId", 42L)
+                .like("province", "BJ");
 
-        assertEquals("FROM PsLawcase p WHERE p.clueId = ?1 AND p.caseno LIKE ?2 ", builder.getHql());
+        assertEquals("FROM OrderJpaEntity p WHERE p.buyerId = ?1 AND p.province LIKE ?2 ", builder.getHql());
     }
 
     /** 演示：JOIN 关联查询，字段自动拼接别名前缀 */
     @Test
     public void hqlQuery_join_generatesJoinClause() {
-        HqlQueryBuilder<PsLawcase> builder = newBuilder()
+        HqlQueryBuilder<OrderJpaEntity> builder = newBuilder()
                 .select("id")
                 .from()
-                .join("persons")
-                .eq("caseno", "C001");
+                .join("items")
+                .eq("province", "BJ");
 
-        assertEquals("SELECT t.id FROM PsLawcase t JOIN t.persons WHERE t.caseno = ?1 ", builder.getHql());
-        assertEquals(Collections.singletonList("C001"), builder.getParams());
+        assertEquals("SELECT t.id FROM OrderJpaEntity t JOIN t.items WHERE t.province = ?1 ", builder.getHql());
+        assertEquals(Collections.singletonList("BJ"), builder.getParams());
     }
 
     // ==================== 查询执行测试 ====================
@@ -169,19 +169,19 @@ public class HqlQueryFragmentTest {
     /** 演示：list() 执行查询，验证 EntityManager 交互 */
     @Test
     public void hqlQuery_list_invokesEntityManagerWithCorrectHqlAndParams() {
-        when(entityManager.createQuery(anyString(), eq(PsLawcase.class))).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new PsLawcase()));
+        when(entityManager.createQuery(anyString(), eq(OrderJpaEntity.class))).thenReturn(typedQuery);
+        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new OrderJpaEntity()));
 
-        List<PsLawcase> results = newBuilder()
+        List<OrderJpaEntity> results = newBuilder()
                 .from()
-                .eq("clueId", "CLUE-001")
+                .eq("province", "BJ")
                 .list();
 
         assertEquals(1, results.size());
         // 验证 EntityManager 收到的 HQL（build() 会 trim 尾部空格）
-        verify(entityManager).createQuery("FROM PsLawcase t WHERE t.clueId = ?1", PsLawcase.class);
+        verify(entityManager).createQuery("FROM OrderJpaEntity t WHERE t.province = ?1", OrderJpaEntity.class);
         // 验证位置参数绑定
-        verify(typedQuery).setParameter(1, "CLUE-001");
+        verify(typedQuery).setParameter(1, "BJ");
         verify(typedQuery).getResultList();
     }
 
@@ -192,14 +192,14 @@ public class HqlQueryFragmentTest {
         // 这里取 total=50 大于 offset(0)+pageSize(10)，以便直接断言 COUNT 查询返回的总数。
         when(entityManager.createQuery(contains("SELECT COUNT(*)"), eq(Long.class))).thenReturn(countQuery);
         when(countQuery.getSingleResult()).thenReturn(50L);
-        when(entityManager.createQuery(contains("FROM PsLawcase"), eq(PsLawcase.class))).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new PsLawcase()));
+        when(entityManager.createQuery(contains("FROM OrderJpaEntity"), eq(OrderJpaEntity.class))).thenReturn(typedQuery);
+        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new OrderJpaEntity()));
 
         Pageable pageable = PageRequest.of(0, 10);
-        Page<PsLawcase> page = newBuilder()
+        Page<OrderJpaEntity> page = newBuilder()
                 .select("id")
                 .from()
-                .eq("clueId", "CLUE-001")
+                .eq("province", "BJ")
                 .page(pageable);
 
         log.info("分页结果: total={}, contentSize={}", page.getTotalElements(), page.getContent().size());
@@ -213,13 +213,13 @@ public class HqlQueryFragmentTest {
     /** 演示：single() 返回单个结果，内部设置 setMaxResults(1) */
     @Test
     public void hqlQuery_single_returnsFirstResult() {
-        PsLawcase expected = new PsLawcase();
-        when(entityManager.createQuery(anyString(), eq(PsLawcase.class))).thenReturn(typedQuery);
+        OrderJpaEntity expected = new OrderJpaEntity();
+        when(entityManager.createQuery(anyString(), eq(OrderJpaEntity.class))).thenReturn(typedQuery);
         when(typedQuery.getResultList()).thenReturn(Collections.singletonList(expected));
 
-        PsLawcase result = newBuilder()
+        OrderJpaEntity result = newBuilder()
                 .from()
-                .eq("id", "001")
+                .eq("id", 100L)
                 .single();
 
         assertSame(expected, result);
@@ -235,12 +235,12 @@ public class HqlQueryFragmentTest {
         long count = newBuilder()
                 .select("id")
                 .from()
-                .eq("clueId", "CLUE-001")
+                .eq("province", "BJ")
                 .count();
 
         assertEquals(10L, count);
-        verify(entityManager).createQuery("SELECT COUNT(*) FROM PsLawcase t WHERE t.clueId = ?1", Long.class);
-        verify(countQuery).setParameter(1, "CLUE-001");
+        verify(entityManager).createQuery("SELECT COUNT(*) FROM OrderJpaEntity t WHERE t.province = ?1", Long.class);
+        verify(countQuery).setParameter(1, "BJ");
     }
 
     // ==================== findByHql 测试 ====================
@@ -248,35 +248,35 @@ public class HqlQueryFragmentTest {
     /** 演示：findByHql 直接执行 HQL 字符串，按位置绑定参数 */
     @Test
     public void findByHql_executesQueryWithPositionalParams() {
-        when(entityManager.createQuery(anyString(), eq(PsLawcase.class))).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new PsLawcase()));
+        when(entityManager.createQuery(anyString(), eq(OrderJpaEntity.class))).thenReturn(typedQuery);
+        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new OrderJpaEntity()));
 
-        String hql = "FROM PsLawcase t WHERE t.clueId = ?1 AND t.caseno = ?2";
-        List<PsLawcase> results = hqlFragment.findByHql(hql, "CLUE-001", "C001");
+        String hql = "FROM OrderJpaEntity t WHERE t.id = ?1 AND t.province = ?2";
+        List<OrderJpaEntity> results = hqlFragment.findByHql(hql, 100L, "BJ");
 
         assertEquals(1, results.size());
-        verify(entityManager).createQuery(hql, PsLawcase.class);
-        verify(typedQuery).setParameter(1, "CLUE-001");
-        verify(typedQuery).setParameter(2, "C001");
+        verify(entityManager).createQuery(hql, OrderJpaEntity.class);
+        verify(typedQuery).setParameter(1, 100L);
+        verify(typedQuery).setParameter(2, "BJ");
     }
 
     /** 演示：findByHql 分页查询，自动构建 COUNT HQL（与 HqlQueryBuilder#count() 共用 SqlCountSupport） */
     @Test
     public void findByHql_withPageable_executesCountAndDataQueries() {
-        String hql = "SELECT t FROM PsLawcase t WHERE t.clueId = ?1";
-        String countHql = "SELECT COUNT(*) FROM PsLawcase t WHERE t.clueId = ?1";
+        String hql = "SELECT t FROM OrderJpaEntity t WHERE t.id = ?1";
+        String countHql = "SELECT COUNT(*) FROM OrderJpaEntity t WHERE t.id = ?1";
 
         when(entityManager.createQuery(countHql, Long.class)).thenReturn(countQuery);
         // total 需大于 offset(0)+pageSize(5)，否则 PageImpl 会修正 total
         when(countQuery.getSingleResult()).thenReturn(30L);
-        when(entityManager.createQuery(hql, PsLawcase.class)).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new PsLawcase()));
+        when(entityManager.createQuery(hql, OrderJpaEntity.class)).thenReturn(typedQuery);
+        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new OrderJpaEntity()));
 
         Pageable pageable = PageRequest.of(0, 5);
-        Page<PsLawcase> page = hqlFragment.findByHql(hql, pageable, "CLUE-001");
+        Page<OrderJpaEntity> page = hqlFragment.findByHql(hql, pageable, 100L);
 
         assertEquals(30L, page.getTotalElements());
-        verify(typedQuery).setParameter(1, "CLUE-001");
+        verify(typedQuery).setParameter(1, 100L);
         verify(typedQuery).setFirstResult(0);
         verify(typedQuery).setMaxResults(5);
     }

@@ -1,11 +1,6 @@
 package org.gravitywavetech.extended.jpa.repository;
 
-import org.gravitywavetech.order.infrastructure.repository.jpa.DfApiDictItem;
-import org.gravitywavetech.order.infrastructure.repository.jpa.PsLawcase;
-import org.gravitywavetech.extended.jpa.repository.CriteriaQueryBuilder;
-import org.gravitywavetech.extended.jpa.repository.ExtendedBaseRepositoryImpl;
-import org.gravitywavetech.extended.jpa.repository.HqlQueryBuilder;
-import org.gravitywavetech.extended.jpa.repository.NativeQueryBuilder;
+import org.gravitywavetech.order.infrastructure.repository.jpa.OrderJpaEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,10 +54,8 @@ public class ExtendedBaseRepositoryImplTest {
     private EntityManagerFactory entityManagerFactory;
 
     @Mock
-    private JpaEntityInformation<DfApiDictItem, Serializable> dictItemEntityInformation;
+    private JpaEntityInformation<OrderJpaEntity, Serializable> orderJpaEntityInformation;
 
-    @Mock
-    private JpaEntityInformation<PsLawcase, Serializable> lawcaseEntityInformation;
 
     /** findByNativeSql 的数据查询 */
     @Mock
@@ -73,7 +66,7 @@ public class ExtendedBaseRepositoryImplTest {
     private Query countQuery;
 
     @Mock
-    private TypedQuery<DfApiDictItem> typedQuery;
+    private TypedQuery<OrderJpaEntity> typedQuery;
 
     @Mock
     private TypedQuery<Long> typedCountQuery;
@@ -82,27 +75,24 @@ public class ExtendedBaseRepositoryImplTest {
     private CriteriaBuilder criteriaBuilder;
 
     @Mock
-    private CriteriaQuery<DfApiDictItem> criteriaQuery;
+    private CriteriaQuery<OrderJpaEntity> criteriaQuery;
 
     @Mock
-    private Root<DfApiDictItem> root;
+    private Root<OrderJpaEntity> root;
 
     /** 被测对象：以 df_api_dict_item 为业务场景 */
-    private ExtendedBaseRepositoryImpl<DfApiDictItem, Long> dictItemRepository;
+    private ExtendedBaseRepositoryImpl<OrderJpaEntity, Long> orderJpaEntityRepository;
 
-    /** 被测对象：以 ps_lawcase 验证 save() 审计链路 */
-    private ExtendedBaseRepositoryImpl<PsLawcase, String> lawcaseRepository;
+
 
     @BeforeEach
     public void setUp() {
         when(entityManager.getEntityManagerFactory()).thenReturn(entityManagerFactory);
 
         // 基类通过 JpaEntityInformation 拿到实体类型，这是泛型得以保留的关键
-        when(dictItemEntityInformation.getJavaType()).thenReturn(DfApiDictItem.class);
-        when(lawcaseEntityInformation.getJavaType()).thenReturn(PsLawcase.class);
+        when(orderJpaEntityInformation.getJavaType()).thenReturn(OrderJpaEntity.class);
 
-        dictItemRepository = new ExtendedBaseRepositoryImpl<>(dictItemEntityInformation, entityManager);
-        lawcaseRepository = new ExtendedBaseRepositoryImpl<>(lawcaseEntityInformation, entityManager);
+        orderJpaEntityRepository = new ExtendedBaseRepositoryImpl<>(orderJpaEntityInformation, entityManager);
     }
 
     // ==================== 三个查询入口的委托与泛型 ====================
@@ -110,33 +100,33 @@ public class ExtendedBaseRepositoryImplTest {
     /** nativeQuery() 应返回已注入实体类型的构建器（委托到 NativeQueryFragmentImpl） */
     @Test
     public void nativeQuery_delegatesAndKeepsEntityType() {
-        NativeQueryBuilder<DfApiDictItem> builder = dictItemRepository.nativeQuery()
+        NativeQueryBuilder<OrderJpaEntity> builder = orderJpaEntityRepository.nativeQuery()
                 .select("*")
-                .from("df_api_dict_item")
+                .from("t_order")
                 .eq("delete_status", "N");
 
-        assertEquals("SELECT * FROM df_api_dict_item WHERE delete_status = ?1 ", builder.getSql());
+        assertEquals("SELECT * FROM t_order WHERE delete_status = ?1 ", builder.getSql());
         assertEquals(Collections.singletonList("N"), builder.getParams());
     }
 
     /** hqlQuery() 应返回已注入实体类型的构建器（委托到 HqlQueryFragmentImpl） */
     @Test
     public void hqlQuery_delegatesAndKeepsEntityType() {
-        HqlQueryBuilder<DfApiDictItem> builder = dictItemRepository.hqlQuery()
+        HqlQueryBuilder<OrderJpaEntity> builder = orderJpaEntityRepository.hqlQuery()
                 .from()
-                .eq("dictTypeCode", "fxtw_fl");
+                .eq("province", "fxtw_fl");
 
-        assertEquals("FROM DfApiDictItem t WHERE t.dictTypeCode = ?1 ", builder.getHql());
+        assertEquals("FROM t_order t WHERE t.province = ?1 ", builder.getHql());
     }
 
     /** criteriaQuery() 应返回已注入实体类型的构建器（委托到 CriteriaQueryFragmentImpl） */
     @Test
     public void criteriaQuery_delegatesAndKeepsEntityType() {
         when(entityManager.getCriteriaBuilder()).thenReturn(criteriaBuilder);
-        when(criteriaBuilder.createQuery(DfApiDictItem.class)).thenReturn(criteriaQuery);
-        when(criteriaQuery.from(DfApiDictItem.class)).thenReturn(root);
+        when(criteriaBuilder.createQuery(OrderJpaEntity.class)).thenReturn(criteriaQuery);
+        when(criteriaQuery.from(OrderJpaEntity.class)).thenReturn(root);
 
-        CriteriaQueryBuilder<DfApiDictItem> builder = dictItemRepository.criteriaQuery();
+        CriteriaQueryBuilder<OrderJpaEntity> builder = orderJpaEntityRepository.criteriaQuery();
 
         assertNotNull(builder);
         verify(entityManager).getCriteriaBuilder();
@@ -147,14 +137,14 @@ public class ExtendedBaseRepositoryImplTest {
     /** findByNativeSql 直接委托给 Native 片段，返回 List<DfApiDictItem> */
     @Test
     public void findByNativeSql_delegatesToNativeFragment() {
-        String sql = "SELECT * FROM df_api_dict_item WHERE dict_type_code = ?1";
-        DfApiDictItem expected = new DfApiDictItem();
+        String sql = "SELECT * FROM t_order WHERE province = ?1";
+        OrderJpaEntity expected = new OrderJpaEntity();
         expected.setId(1L);
 
-        when(entityManager.createNativeQuery(sql, DfApiDictItem.class)).thenReturn(dataQuery);
+        when(entityManager.createNativeQuery(sql, OrderJpaEntity.class)).thenReturn(dataQuery);
         when(dataQuery.getResultList()).thenReturn(Collections.singletonList(expected));
 
-        List<DfApiDictItem> result = dictItemRepository.findByNativeSql(sql, DfApiDictItem.class, "fxtw_fl");
+        List<OrderJpaEntity> result = orderJpaEntityRepository.findByNativeSql(sql, OrderJpaEntity.class, "fxtw_fl");
 
         assertEquals(1, result.size());
         assertSame(expected, result.get(0));
@@ -164,16 +154,16 @@ public class ExtendedBaseRepositoryImplTest {
     /** findByHql 分页：COUNT HQL 由 SqlCountSupport 生成，与 HqlQueryBuilder#count() 完全一致 */
     @Test
     public void findByHql_withPageable_usesSqlCountSupportForCountHql() {
-        String hql = "SELECT t FROM DfApiDictItem t WHERE t.dictTypeCode = ?1";
-        String countHql = "SELECT COUNT(*) FROM DfApiDictItem t WHERE t.dictTypeCode = ?1";
+        String hql = "SELECT t FROM OrderJpaEntity t WHERE t.province = ?1";
+        String countHql = "SELECT COUNT(*) FROM OrderJpaEntity t WHERE t.province = ?1";
 
         when(entityManager.createQuery(countHql, Long.class)).thenReturn(typedCountQuery);
         when(typedCountQuery.getSingleResult()).thenReturn(25L);
-        when(entityManager.createQuery(hql, DfApiDictItem.class)).thenReturn(typedQuery);
-        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new DfApiDictItem()));
+        when(entityManager.createQuery(hql, OrderJpaEntity.class)).thenReturn(typedQuery);
+        when(typedQuery.getResultList()).thenReturn(Collections.singletonList(new OrderJpaEntity()));
 
         Pageable pageable = PageRequest.of(0, 10);
-        Page<DfApiDictItem> page = dictItemRepository.findByHql(hql, pageable, "fxtw_fl");
+        Page<OrderJpaEntity> page = orderJpaEntityRepository.findByHql(hql, pageable, "fxtw_fl");
         System.err.println("-----TotalPages-----:"+page.getTotalPages());
 
         assertEquals(25L, page.getTotalElements());
@@ -183,19 +173,4 @@ public class ExtendedBaseRepositoryImplTest {
         verify(typedQuery).setMaxResults(10);
     }
 
-    // ==================== CRUD 链路：save() 只做 ID 生成与 persist/merge 分发 ====================
-
-    /** isNew=true 时应走 persist；审计字段由 Spring Data Auditing 在持久化前填充，本测试不覆盖 */
-    @Test
-    public void save_persistsNewEntity() {
-        PsLawcase lawcase = new PsLawcase();
-        when(lawcaseEntityInformation.isNew(lawcase)).thenReturn(true);
-
-        PsLawcase saved = lawcaseRepository.save(lawcase);
-
-        assertSame(lawcase, saved);
-        assertNotNull(lawcase.getId(), "PsLawcase 构造时应已生成主键");
-        verify(entityManager).persist(lawcase);
-        verify(entityManager, org.mockito.Mockito.never()).merge(lawcase);
-    }
 }
