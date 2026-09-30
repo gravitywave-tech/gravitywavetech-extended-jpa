@@ -52,6 +52,32 @@ public class Payment {
     }
 
     /**
+     * 从持久化状态重建聚合（不触发 PaymentCreatedEvent，不重置状态）。
+     *
+     * <p>用于 Repository 加载已存在的支付单：数据库中的状态是合法的，
+     * 不应重新走 create 工厂的初始化逻辑 —— 那会把 status 重置为 PENDING、
+     * 丢失 thirdPartyTradeNo / paidAt，还会凭空产生一条 PaymentCreatedEvent，
+     * 导致 markSuccess 的幂等守卫失效（同一笔支付可被重复标记成功）。</p>
+     */
+    public static Payment rehydrate(PaymentId paymentId,
+                                    OrderRef orderRef,
+                                    Money amount,
+                                    PaymentMethod paymentMethod,
+                                    PaymentStatus status,
+                                    String thirdPartyTradeNo,
+                                    Instant paidAt) {
+        Payment payment = new Payment();
+        payment.id = paymentId;
+        payment.orderRef = orderRef;
+        payment.amount = amount;
+        payment.paymentMethod = paymentMethod;
+        payment.status = status;
+        payment.thirdPartyTradeNo = thirdPartyTradeNo;
+        payment.paidAt = paidAt;
+        return payment;
+    }
+
+    /**
      * 领域行为：网关回调 - 支付成功
      */
     public void markSuccess(String thirdPartyTradeNo) {

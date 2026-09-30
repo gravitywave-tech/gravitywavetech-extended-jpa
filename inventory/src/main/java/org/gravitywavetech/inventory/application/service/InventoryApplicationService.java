@@ -53,9 +53,11 @@ public class InventoryApplicationService {
         Inventory inventory = Inventory.create(inventoryId, cmd.productId(), cmd.productName(), cmd.initialStock());
         Inventory saved = inventoryRepository.save(inventory);
 
-        persistAuditLog(saved);
-        saved.getDomainEvents().forEach(eventPublisher::publishEvent);
-        saved.clearDomainEvents();
+        // 注意：save() 返回的聚合是通过 rehydrate 重建的（不含 domain events），
+        // 事件只挂在原始 `inventory` 实例上，所以要从 inventory 取事件。
+        persistAuditLog(inventory);
+        inventory.getDomainEvents().forEach(eventPublisher::publishEvent);
+        inventory.clearDomainEvents();
 
         log.info("库存初始化完成，productId={}, initialStock={}", cmd.productId(), cmd.initialStock());
         return StockResponse.from(saved);
@@ -71,9 +73,9 @@ public class InventoryApplicationService {
         inventory.replenish(cmd.quantity());
         Inventory saved = inventoryRepository.save(inventory);
 
-        persistAuditLog(saved);
-        saved.getDomainEvents().forEach(eventPublisher::publishEvent);
-        saved.clearDomainEvents();
+        persistAuditLog(inventory);
+        inventory.getDomainEvents().forEach(eventPublisher::publishEvent);
+        inventory.clearDomainEvents();
 
         log.info("补货完成，productId={}, quantity={}, available={}",
                 cmd.productId(), cmd.quantity(), saved.getAvailableStock());
@@ -102,9 +104,9 @@ public class InventoryApplicationService {
         inventory.deduct(quantity);
         Inventory saved = inventoryRepository.save(inventory);
 
-        persistAuditLog(saved, orderId);
-        saved.getDomainEvents().forEach(eventPublisher::publishEvent);
-        saved.clearDomainEvents();
+        persistAuditLog(inventory, orderId);
+        inventory.getDomainEvents().forEach(eventPublisher::publishEvent);
+        inventory.clearDomainEvents();
 
         log.info("扣减库存完成，productId={}, quantity={}, orderId={}, available={}",
                 productId, quantity, orderId, saved.getAvailableStock());

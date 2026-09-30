@@ -1,5 +1,6 @@
 package org.gravitywavetech.payment.infrastructure.repository.jpa;
 
+import org.gravitywavetech.payment.domain.exception.PaymentNotFoundException;
 import org.gravitywavetech.payment.domain.model.Money;
 import org.gravitywavetech.payment.domain.model.OrderRef;
 import org.gravitywavetech.payment.domain.model.Payment;
@@ -27,13 +28,17 @@ public class SpringDataPaymentRepository implements PaymentRepository {
     @Override
     public Payment findById(PaymentId paymentId) {
         PaymentJpaEntity entity = jpaRepository.findById(paymentId.getId())
-                .orElseThrow(() -> new RuntimeException("支付单不存在"));
-        // DO -> 领域聚合对象
-        return Payment.create(
+                .orElseThrow(() -> new PaymentNotFoundException(paymentId.getId()));
+        // 用 rehydrate 而非 create：恢复 DB 中的真实状态（SUCCESS/FAILED），
+        // 不重置为 PENDING，也不触发多余的 PaymentCreatedEvent
+        return Payment.rehydrate(
                 new PaymentId(entity.getId()),
                 new OrderRef(entity.getOrderRefId()),
                 Money.of(entity.getAmount()),
-                entity.getPaymentMethod()
+                entity.getPaymentMethod(),
+                entity.getStatus(),
+                entity.getThirdPartyTradeNo(),
+                entity.getPaidAt()
         );
     }
 

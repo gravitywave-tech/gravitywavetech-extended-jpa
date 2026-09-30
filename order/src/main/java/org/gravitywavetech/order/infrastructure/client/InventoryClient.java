@@ -2,6 +2,7 @@ package org.gravitywavetech.order.infrastructure.client;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.gravitywavetech.order.application.port.StockDeductionPort;
 import org.gravitywavetech.order.domain.model.OrderId;
 import org.gravitywavetech.order.domain.model.OrderItem;
 import org.springframework.cloud.stream.function.StreamBridge;
@@ -14,9 +15,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 库存服务客户端（防腐层）。
+ * {@link StockDeductionPort} 的 RabbitMQ 实现（防腐层）。
  *
- * <p>通过 Spring Cloud Stream 向 inventory-service 发送「扣减库存」消息，
+ * <p>通过 Spring Cloud Stream 向 inventory 服务发送「扣减库存」消息，
  * 由 inventory 服务的 {@code InventoryDeductConsumer} 异步消费。
  * 订单服务不直接调用库存服务 HTTP，避免跨服务强耦合。</p>
  *
@@ -27,13 +28,14 @@ import java.util.UUID;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class InventoryClient {
+public class InventoryClient implements StockDeductionPort {
 
     private static final String OUTPUT = "inventoryDeduct-out-0";
 
     private final StreamBridge streamBridge;
 
-    public void deduct(OrderId orderId, List<OrderItem> items) {
+    @Override
+    public void deductForOrder(OrderId orderId, List<OrderItem> items) {
         List<InventoryDeductMessage.ItemDeduct> itemDeducts = items == null
                 ? List.of()
                 : items.stream()

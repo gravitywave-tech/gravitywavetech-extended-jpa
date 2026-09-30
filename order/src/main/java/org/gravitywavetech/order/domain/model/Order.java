@@ -15,7 +15,6 @@ import org.gravitywavetech.order.domain.event.OrderCreatedEvent;
 import org.gravitywavetech.order.domain.exception.InvalidOrderStateException;
 import org.gravitywavetech.order.domain.exception.PaymentAmountMismatchException;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,10 +42,10 @@ public class Order {
         order.items = new ArrayList<>(items);
         order.shippingAddress = address;
         order.status = OrderStatus.WAITING_PAYMENT;
-        // 汇总总金额
-        Money total = Money.of(BigDecimal.ZERO);
-        for(OrderItem item : items){
-            total = Money.of(total.getAmount().add(item.getSubTotal().getAmount()));
+        // 汇总总金额（算术封闭在 Money 值对象内）
+        Money total = Money.zero();
+        for (OrderItem item : items) {
+            total = total.add(item.getSubTotal());
         }
         order.totalAmount = total;
         order.domainEvents.add(new OrderCreatedEvent(id));
@@ -84,6 +83,7 @@ public class Order {
      */
     public void pay(Money paidAmount) {
         ensureStatus(OrderStatus.WAITING_PAYMENT);
+        // Money.equals 为 compareTo 语义，金额经跨服务 JSON 往返后 scale 变化不影响判定
         if (!totalAmount.equals(paidAmount)) {
             throw new PaymentAmountMismatchException();
         }
