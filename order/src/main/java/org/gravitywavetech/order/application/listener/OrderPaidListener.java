@@ -31,7 +31,7 @@ public class OrderPaidListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderPaid(OrderPaidEvent event) {
         // 事务提交之后异步执行，避免主事务阻塞
-        inventoryClient.deduct(event.getOrderId());
+        inventoryClient.deduct(event.getOrderId(), event.getItems());
         notificationClient.notifyUser(event.getOrderId());
     }
 }

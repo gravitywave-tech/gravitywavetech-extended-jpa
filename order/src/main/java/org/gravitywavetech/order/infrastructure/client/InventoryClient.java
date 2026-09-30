@@ -3,6 +3,7 @@ package org.gravitywavetech.order.infrastructure.client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.gravitywavetech.order.domain.model.OrderId;
+import org.gravitywavetech.order.domain.model.OrderItem;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
@@ -20,8 +21,8 @@ import java.util.UUID;
  * 订单服务不直接调用库存服务 HTTP，避免跨服务强耦合。</p>
  *
  * <p>消息契约见 {@link InventoryDeductMessage}：
- * 当前仅传 {@code orderId}，items 暂为空列表；
- * 后续可在 {@code OrderPaidListener} 处补齐商品明细后扩展。</p>
+ * 携带 {@code orderId} 与 {@code items}（productId + quantity），
+ * 让 inventory 服务无需反向调用 order 即可完整执行扣减。</p>
  */
 @Slf4j
 @Component
@@ -32,10 +33,17 @@ public class InventoryClient {
 
     private final StreamBridge streamBridge;
 
-    public void deduct(OrderId orderId) {
+    public void deduct(OrderId orderId, List<OrderItem> items) {
+        List<InventoryDeductMessage.ItemDeduct> itemDeducts = items == null
+                ? List.of()
+                : items.stream()
+                        .map(item -> new InventoryDeductMessage.ItemDeduct(
+                                item.getProductId(), item.getQuantity()))
+                        .toList();
+
         InventoryDeductMessage payload = new InventoryDeductMessage(
                 orderId.getId(),
-                List.of(),
+                itemDeducts,
                 Instant.now()
         );
         String traceId = UUID.randomUUID().toString();
@@ -43,7 +51,8 @@ public class InventoryClient {
                 .withPayload(payload)
                 .setHeader("traceId", traceId)
                 .build();
-        log.info("发送扣减库存请求，traceId={}, orderId={}", traceId, orderId.getId());
+        log.info("发送扣减库存请求，traceId={}, orderId={}, items={}",
+                traceId, orderId.getId(), itemDeducts);
         streamBridge.send(OUTPUT, outbound);
     }
 }

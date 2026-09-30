@@ -88,7 +88,7 @@ public class Order {
             throw new PaymentAmountMismatchException();
         }
         this.status = OrderStatus.PAID;
-        domainEvents.add(new OrderPaidEvent(id, Instant.now()));
+        domainEvents.add(new OrderPaidEvent(id, Instant.now(), new ArrayList<>(items)));
     }
 
     /**

@@ -1,11 +1,14 @@
 package org.gravitywavetech.order.infrastructure.repository;
 
+import org.gravitywavetech.extended.jpa.util.SnowflakeUtil;
 import org.gravitywavetech.order.domain.exception.OrderNotFoundException;
 import org.gravitywavetech.order.domain.model.Address;
 import org.gravitywavetech.order.domain.model.Money;
 import org.gravitywavetech.order.domain.model.Order;
 import org.gravitywavetech.order.domain.model.OrderId;
+import org.gravitywavetech.order.domain.model.OrderItem;
 import org.gravitywavetech.order.domain.repository.OrderRepository;
+import org.gravitywavetech.order.infrastructure.repository.jpa.OrderItemJpaEntity;
 import org.gravitywavetech.order.infrastructure.repository.jpa.OrderJpaEntity;
 import org.gravitywavetech.order.infrastructure.repository.jpa.OrderJpaRepository;
 import org.springframework.stereotype.Repository;
@@ -56,14 +59,26 @@ public class SpringDataOrderRepository implements OrderRepository {
 
     private Order toDomain(OrderJpaEntity jpaEntity) {
         Address address = Address.of(jpaEntity.getProvince(), jpaEntity.getCity(), jpaEntity.getDetailAddress());
+        List<OrderItem> items = jpaEntity.getItems().stream()
+                .map(this::toDomainItem)
+                .toList();
         // 用 rehydrate 而非 create，避免把 status 重置为 WAITING_PAYMENT、也避免重复发 OrderCreatedEvent
         return Order.rehydrate(
                 new OrderId(jpaEntity.getId()),
                 jpaEntity.getBuyerId(),
-                List.of(),
+                items,
                 address,
                 jpaEntity.getStatus(),
                 Money.of(jpaEntity.getTotalAmount())
+        );
+    }
+
+    private OrderItem toDomainItem(OrderItemJpaEntity entity) {
+        return new OrderItem(
+                entity.getProductId(),
+                entity.getProductName(),
+                entity.getQuantity(),
+                Money.of(entity.getUnitPrice())
         );
     }
 
@@ -76,6 +91,20 @@ public class SpringDataOrderRepository implements OrderRepository {
         jpaEntity.setProvince(order.getShippingAddress().getProvince());
         jpaEntity.setCity(order.getShippingAddress().getCity());
         jpaEntity.setDetailAddress(order.getShippingAddress().getDetail());
+        jpaEntity.setItems(order.getItems().stream()
+                .map(item -> toJpaItemEntity(order.getId().getId(), item))
+                .toList());
         return jpaEntity;
+    }
+
+    private OrderItemJpaEntity toJpaItemEntity(Long orderId, OrderItem item) {
+        OrderItemJpaEntity entity = new OrderItemJpaEntity();
+        entity.setId(SnowflakeUtil.nextId());
+        entity.setOrderId(orderId);
+        entity.setProductId(item.getProductId());
+        entity.setProductName(item.getProductName());
+        entity.setQuantity(item.getQuantity());
+        entity.setUnitPrice(item.getUnitPrice().getAmount());
+        return entity;
     }
 }

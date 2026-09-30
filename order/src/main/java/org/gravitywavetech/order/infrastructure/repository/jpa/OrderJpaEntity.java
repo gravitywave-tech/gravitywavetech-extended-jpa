@@ -5,6 +5,8 @@ import lombok.Data;
 import org.gravitywavetech.order.domain.model.OrderStatus;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * OrderJpaEntity
@@ -33,4 +35,8 @@ public class OrderJpaEntity {
     private String province;
     private String city;
     private String detailAddress;
+
+    // 订单项：与 t_order_item 表通过 order_id 外键关联
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<OrderItemJpaEntity> items = new ArrayList<>();
 }

@@ -7,10 +7,13 @@ import org.gravitywavetech.inventory.application.command.CreateStockCommand;
 import org.gravitywavetech.inventory.application.command.DeductStockCommand;
 import org.gravitywavetech.inventory.application.command.ReplenishStockCommand;
 import org.gravitywavetech.inventory.application.dto.StockResponse;
+import org.gravitywavetech.inventory.domain.event.StockChangedEvent;
 import org.gravitywavetech.inventory.domain.exception.ProductNotFoundException;
 import org.gravitywavetech.inventory.domain.model.Inventory;
 import org.gravitywavetech.inventory.domain.model.InventoryId;
 import org.gravitywavetech.inventory.domain.repository.InventoryRepository;
+import org.gravitywavetech.inventory.infrastructure.repository.jpa.InventoryLogJpaEntity;
+import org.gravitywavetech.inventory.infrastructure.repository.jpa.InventoryLogJpaRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +24,10 @@ import java.util.List;
  * 库存应用服务。
  *
  * <p>负责编排「初始化 / 补货 / 扣减 / 查询」四类业务用例，
- * 保持 Inventory 聚合的领域规则在 Inventory 内部，本服务只做流程调度 + 事件发布。</p>
+ * 保持 Inventory 聚合的领域规则在 Inventory 内部，本服务只做流程调度 + 事件发布 + 审计日志。</p>
  *
  * <p>事务边界：所有写操作都加 {@code @Transactional}，
- * 保证「修改聚合 + 持久化 + 发布领域事件」三者原子。</p>
+ * 保证「修改聚合 + 持久化 + 写审计日志 + 发布领域事件」四者原子。</p>
  */
 @Slf4j
 @Service
@@ -32,6 +35,7 @@ import java.util.List;
 public class InventoryApplicationService {
 
     private final InventoryRepository inventoryRepository;
+    private final InventoryLogJpaRepository inventoryLogJpaRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -49,6 +53,7 @@ public class InventoryApplicationService {
         Inventory inventory = Inventory.create(inventoryId, cmd.productId(), cmd.productName(), cmd.initialStock());
         Inventory saved = inventoryRepository.save(inventory);
 
+        persistAuditLog(saved);
         saved.getDomainEvents().forEach(eventPublisher::publishEvent);
         saved.clearDomainEvents();
 
@@ -66,6 +71,7 @@ public class InventoryApplicationService {
         inventory.replenish(cmd.quantity());
         Inventory saved = inventoryRepository.save(inventory);
 
+        persistAuditLog(saved);
         saved.getDomainEvents().forEach(eventPublisher::publishEvent);
         saved.clearDomainEvents();
 
@@ -96,6 +102,7 @@ public class InventoryApplicationService {
         inventory.deduct(quantity);
         Inventory saved = inventoryRepository.save(inventory);
 
+        persistAuditLog(saved, orderId);
         saved.getDomainEvents().forEach(eventPublisher::publishEvent);
         saved.clearDomainEvents();
 
@@ -122,5 +129,31 @@ public class InventoryApplicationService {
         return inventoryRepository.findAll().stream()
                 .map(StockResponse::from)
                 .toList();
+    }
+
+    /**
+     * 遍历聚合上暂存的领域事件，为每个 {@link StockChangedEvent} 写一条审计日志。
+     * 未关联订单的场景（初始化 / 补货）orderId 为 null。
+     */
+    private void persistAuditLog(Inventory inventory) {
+        persistAuditLog(inventory, null);
+    }
+
+    private void persistAuditLog(Inventory inventory, Long orderId) {
+        for (Object evt : inventory.getDomainEvents()) {
+            if (evt instanceof StockChangedEvent sc) {
+                InventoryLogJpaEntity logEntry = new InventoryLogJpaEntity();
+                logEntry.setId(SnowflakeUtil.nextId());
+                logEntry.setInventoryId(sc.inventoryId().getId());
+                logEntry.setProductId(sc.productId());
+                logEntry.setProductName(sc.productName());
+                logEntry.setOrderId(orderId);
+                logEntry.setOperation(sc.changeType());
+                logEntry.setQuantity(sc.changeAmount());
+                logEntry.setStockAfter(sc.remaining());
+                logEntry.setOccurredAt(sc.occurredAt());
+                inventoryLogJpaRepository.save(logEntry);
+            }
+        }
     }
 }
